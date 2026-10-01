@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Settings & Thresholds – Alpha Squared</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <style>
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+            font-weight: 500;
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <div class="brand-container">
+            <div class="brand-logo">A²</div>
+            <span class="brand-title">Alpha Squared IoT</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-link">Home</a></li>
+            <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+            <li><a href="emergency.html" class="nav-link">Emergency Screen</a></li>
+            <li><a href="history.html" class="nav-link">History</a></li>
+            <li><a href="settings.html" class="nav-link active">Settings</a></li>
+        </ul>
+    </header>
+
+    <main class="container" style="max-width: 1000px;">
+        
+        <div class="dashboard-header">
+            <div class="header-title">
+                <h1>Configuration & Threshold Settings</h1>
+                <p>Customize patient profiles, emergency caregiver alerts, and clinical alert boundaries</p>
+            </div>
+        </div>
+
+        <form id="settings-form" onsubmit="saveSystemSettings(event)">
+            
+            <!-- Patient Profile & Caregivers -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 class="card-title">Patient Profile & Emergency Contacts</h3>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Patient Full Name</label>
+                        <input type="text" id="cfg-patient-name" value="Eleanor Vance" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input type="number" id="cfg-patient-age" value="68" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Blood Group</label>
+                        <input type="text" id="cfg-patient-blood" value="O+" class="form-input">
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-top: 1rem;">
+                    <div class="form-group">
+                        <label>Primary Caregiver Name & Phone</label>
+                        <input type="text" id="cfg-caregiver-1" value="Dr. Marcus Vance (+1 555-0192)" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Secondary Caregiver Contact</label>
+                        <input type="text" id="cfg-caregiver-2" value="Sarah Jenkins (+1 555-0144)" class="form-input">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Centralized Clinical Vitals Thresholds -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 class="card-title">Clinical Vitals Threshold Configuration</h3>
+                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">
+                    Readings beyond these bounds trigger automated Warning or Emergency states on the live dashboard.
+                </p>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Heart Rate Critical Min (BPM)</label>
+                        <input type="number" id="cfg-hr-min" value="50" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Heart Rate Critical Max (BPM)</label>
+                        <input type="number" id="cfg-hr-max" value="120" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>SpO2 Critical Minimum (%)</label>
+                        <input type="number" id="cfg-spo2-critical" value="91" class="form-input" required>
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-top:0.5rem;">
+                    <div class="form-group">
+                        <label>Body Temp Critical Min (°C)</label>
+                        <input type="number" step="0.1" id="cfg-temp-min" value="35.5" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Body Temp Critical Max (°C)</label>
+                        <input type="number" step="0.1" id="cfg-temp-max" value="38.5" class="form-input" required>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:1rem;">
+                <button type="submit" class="btn btn-primary" style="padding:0.8rem 2rem;">
+                    💾 Save Configuration
+                </button>
+            </div>
+
+        </form>
+
+    </main>
+
+    <!-- JS Scripts -->
+    <script src="js/sensors.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const thresholds = getHealthThresholds();
+            document.getElementById("cfg-hr-min").value = thresholds.hrMin || 50;
+            document.getElementById("cfg-hr-max").value = thresholds.hrMax || 120;
+            document.getElementById("cfg-spo2-critical").value = thresholds.spo2Critical || 91;
+            document.getElementById("cfg-temp-min").value = thresholds.tempMin || 35.5;
+            document.getElementById("cfg-temp-max").value = thresholds.tempMax || 38.5;
+        });
+
+        function saveSystemSettings(event) {
+            event.preventDefault();
+
+            const newThresholds = {
+                hrMin: parseInt(document.getElementById("cfg-hr-min").value),
+                hrMax: parseInt(document.getElementById("cfg-hr-max").value),
+                hrWarnLow: 60,
+                hrWarnHigh: 100,
+                
+                spo2Critical: parseInt(document.getElementById("cfg-spo2-critical").value),
+                spo2Warning: 94,
+                
+                tempMin: parseFloat(document.getElementById("cfg-temp-min").value),
+                tempMax: parseFloat(document.getElementById("cfg-temp-max").value),
+                tempWarnLow: 36.0,
+                tempWarnHigh: 37.6
+            };
+
+            saveHealthThresholds(newThresholds);
+            alert("Configuration settings updated successfully!");
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# ESP32 / Arduino build artifacts
+*.hex
+*.elf
+*.bin
+.vscode/
+.idea/
+
+# Environment and Secrets
+*.env
+hardware/esp32/wifi_secrets.h
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/

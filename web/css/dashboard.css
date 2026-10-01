@@ -1,0 +1,261 @@
+/* ==========================================================================
+   ALPHA SQUARED - Dashboard Layout & Health Card Component Styling
+   ========================================================================== */
+
+/* Top Dashboard Banner Bar */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header-title h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.header-title p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.controls-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Overall Status Banner Card */
+.status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  margin-bottom: 1.5rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border-left: 6px solid var(--status-safe);
+}
+
+.status-card.SAFE {
+  border-left-color: var(--status-safe);
+  background: linear-gradient(90deg, var(--status-safe-bg), var(--bg-card) 60%);
+}
+
+.status-card.WARNING {
+  border-left-color: var(--status-warning);
+  background: linear-gradient(90deg, var(--status-warning-bg), var(--bg-card) 60%);
+}
+
+.status-card.EMERGENCY {
+  border-left-color: var(--status-emergency);
+  background: linear-gradient(90deg, var(--status-emergency-bg), var(--bg-card) 60%);
+  box-shadow: var(--shadow-emergency);
+}
+
+.status-label-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.status-icon-large {
+  font-size: 2.2rem;
+}
+
+.status-text-main {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.SAFE .status-text-main { color: var(--status-safe); }
+.WARNING .status-text-main { color: var(--status-warning); }
+.EMERGENCY .status-text-main { color: var(--status-emergency); }
+
+/* Vitals Metrics Grid */
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.vital-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+
+.vital-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.vital-icon {
+  font-size: 1.4rem;
+}
+
+.vital-value-group {
+  margin: 1rem 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.vital-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.vital-unit {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.vital-status-pill {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+}
+
+.vital-status-pill.normal { background: var(--status-safe-bg); color: var(--status-safe); }
+.vital-status-pill.warning { background: var(--status-warning-bg); color: var(--status-warning); }
+.vital-status-pill.critical { background: var(--status-emergency-bg); color: var(--status-emergency); }
+
+/* Main Dashboard 2-Column Section */
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* SOS Panic Button Card */
+.sos-card {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  background: radial-gradient(circle at center, #271419 0%, var(--bg-card) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.sos-btn-trigger {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: #fff;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  font-size: 1.6rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin: 1rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.sos-btn-trigger:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.8);
+}
+
+.sos-btn-trigger:active {
+  transform: scale(0.96);
+}
+
+/* Patient Information Panel */
+.patient-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.patient-info-item {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+}
+
+.patient-info-item .label {
+  color: var(--text-secondary);
+}
+
+.patient-info-item .val {
+  font-weight: 600;
+}
+
+/* Leaflet Interactive Map Container */
+#map-container {
+  width: 100%;
+  height: 280px;
+  border-radius: var(--radius-sm);
+  background-color: var(--border-color);
+  margin-top: 0.75rem;
+}
+
+/* Fall Modal Countdown Window */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(5px);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-box {
+  background: var(--bg-card);
+  border: 2px solid var(--status-emergency);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  max-width: 480px;
+  width: 90%;
+  text-align: center;
+  box-shadow: var(--shadow-emergency);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.countdown-timer {
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: var(--status-emergency);
+  margin: 1rem 0;
+}

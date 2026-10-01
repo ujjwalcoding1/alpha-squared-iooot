@@ -1,0 +1,49 @@
+{
+  "device": {
+    "deviceId": "ESP32_DEMO_NODE",
+    "online": true,
+    "lastSeen": 1740000000000
+  },
+  "patient": {
+    "name": "Eleanor Vance",
+    "age": 68,
+    "primaryCaregiver": "Dr. Marcus Vance (+1 555-0192)",
+    "secondaryCaregiver": "Sarah Jenkins (+1 555-0144)"
+  },
+  "currentVitals": {
+    "heartRate": 76,
+    "spo2": 98,
+    "temperature": 36.6,
+    "fallDetected": false,
+    "sos": false,
+    "latitude": 28.6139,
+    "longitude": 77.2090,
+    "timestamp": 1740000000000
+  },
+  "sampleEmergencies": [
+    {
+      "eventId": "EMG_1001",
+      "type": "Manual SOS Triggered",
+      "timestamp": "2026-10-01 18:30:12",
+      "heartRate": 110,
+      "spo2": 95,
+      "temperature": 37.1,
+      "latitude": 28.6139,
+      "longitude": 77.2090,
+      "status": "Resolved",
+      "acknowledged": true
+    },
+    {
+      "eventId": "EMG_1002",
+      "type": "Fall Detected",
+      "timestamp": "2026-10-01 20:14:05",
+      "heartRate": 124,
+      "spo2": 93,
+      "temperature": 36.9,
+      "latitude": 28.6142,
+      "longitude": 77.2095,
+      "status": "Acknowledged",
+      "acknowledged": true
+    }
+  ]
+}

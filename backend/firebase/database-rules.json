@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "healthMonitoring": {
+      ".read": true,
+      ".write": true,
+      "device": {
+        ".validate": "newData.hasChildren(['deviceId', 'online'])"
+      },
+      "currentVitals": {
+        ".validate": "newData.hasChildren(['heartRate', 'spo2', 'temperature'])"
+      },
+      "history": {
+        "readings": {
+          ".indexOn": ["timestamp"]
+        }
+      },
+      "emergencies": {
+        ".indexOn": ["timestamp", "status"]
+      }
+    }
+  }
+}

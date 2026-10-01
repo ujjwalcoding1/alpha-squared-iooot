@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History & Event Logs – Alpha Squared</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <style>
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+        table.data-table th {
+            background-color: var(--border-color);
+            padding: 0.85rem 1rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        table.data-table td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        table.data-table tr:hover {
+            background-color: var(--bg-card-hover);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <div class="brand-container">
+            <div class="brand-logo">A²</div>
+            <span class="brand-title">Alpha Squared IoT</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-link">Home</a></li>
+            <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+            <li><a href="emergency.html" class="nav-link">Emergency Screen</a></li>
+            <li><a href="history.html" class="nav-link active">History</a></li>
+            <li><a href="settings.html" class="nav-link">Settings</a></li>
+        </ul>
+    </header>
+
+    <main class="container">
+        
+        <div class="dashboard-header">
+            <div class="header-title">
+                <h1>Emergency Logs & Health Readings History</h1>
+                <p>Immutable event audit log & historical biometric records</p>
+            </div>
+        </div>
+
+        <!-- Emergency History Log Card -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-title">
+                <span>Emergency Events History</span>
+                <span class="mode-badge live">Logged in Realtime DB</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Event ID</th>
+                            <th>Trigger Type</th>
+                            <th>Date / Timestamp</th>
+                            <th>Vitals (HR / SpO2 / Temp)</th>
+                            <th>GPS Location</th>
+                            <th>Status</th>
+                            <th>Caregiver Alert</th>
+                        </tr>
+                    </thead>
+                    <tbody id="emergency-log-body">
+                        <!-- Populated dynamically by history.js -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- JS Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/sensors.js"></script>
+    <script src="js/history.js"></script>
+</body>
+</html>
