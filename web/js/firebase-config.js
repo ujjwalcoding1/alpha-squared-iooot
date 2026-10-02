@@ -6,13 +6,13 @@
 
 // CONFIGURATION PLACEHOLDER - Replace with your project credentials if connecting to live Firebase
 const FIREBASE_CONFIG = {
-    apiKey: "YOUR_API_KEY_PLACEHOLDER",
-    authDomain: "alpha-squared-iot.firebaseapp.com",
-    databaseURL: "https://alpha-squared-iot-default-rtdb.firebaseio.com",
-    projectId: "alpha-squared-iot",
-    storageBucket: "alpha-squared-iot.appspot.com",
-    messagingSenderId: "123456789012",
-    appId: "1:123456789012:web:abcdef123456"
+    apiKey: "AIzaSyBnTWJ5OWKRIk9X5mNtPyESb9odn6rNl2U",
+    authDomain: "alpha-squared-6db35.firebaseapp.com",
+    projectId: "alpha-squared-6db35",
+    storageBucket: "alpha-squared-6db35.firebasestorage.app",
+    messagingSenderId: "1980026179",
+    appId: "1:1980026179:web:3fdf53f90ffc2f561fb3f6",
+    measurementId: "G-6YKDXP9C59"
 };
 
 let db = null;
