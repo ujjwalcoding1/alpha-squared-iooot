@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard – Alpha Squared IoT Health</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    
+    <!-- Leaflet Maps CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <div class="brand-container">
+            <div class="brand-logo">A²</div>
+            <span class="brand-title">Alpha Squared IoT</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-link">Home</a></li>
+            <li><a href="dashboard.html" class="nav-link active">Dashboard</a></li>
+            <li><a href="emergency.html" class="nav-link">Emergency Screen</a></li>
+            <li><a href="history.html" class="nav-link">History</a></li>
+            <li><a href="settings.html" class="nav-link">Settings</a></li>
+        </ul>
+    </header>
+
+    <main class="container">
+        
+        <!-- Top Dashboard Header & Controls -->
+        <div class="dashboard-header">
+            <div class="header-title">
+                <h1>Patient Live Monitoring Dashboard</h1>
+                <p>Real-time ESP32 biometric data feed & automated emergency response</p>
+            </div>
+            
+            <div class="controls-group">
+                <!-- Device Connection Badge -->
+                <span id="device-status-badge" class="vital-status-pill normal">DEVICE ONLINE</span>
+
+                <!-- System Stream Mode Badge (LIVE vs DEMO) -->
+                <span id="system-mode-badge" class="mode-badge live">
+                    <span class="pulse-dot"></span> <span id="system-mode-text">LIVE DEVICE</span>
+                </span>
+                
+                <button id="btn-toggle-demo" class="btn btn-secondary" style="font-size:0.85rem; padding:0.4rem 0.8rem;">
+                    🔄 Switch Stream Mode
+                </button>
+            </div>
+        </div>
+
+        <!-- Centralized Overall Health Status Card -->
+        <div id="overall-status-card" class="status-card SAFE">
+            <div class="status-label-group">
+                <span id="overall-status-icon" class="status-icon-large">✅</span>
+                <div>
+                    <div style="font-size:0.85rem; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Overall Patient Condition</div>
+                    <div id="overall-status-text" class="status-text-main">SAFE</div>
+                </div>
+            </div>
+            <div id="overall-status-reasons" style="color:var(--text-secondary); font-size:0.95rem; font-weight:500;">
+                All biometrics within normal health thresholds.
+            </div>
+        </div>
+
+        <!-- 3 Vitals Metrics Cards -->
+        <div class="vitals-grid">
+            <!-- Heart Rate Card -->
+            <div class="card vital-card">
+                <div class="vital-card-header">
+                    <span>HEART RATE</span>
+                    <span class="vital-icon">❤️</span>
+                </div>
+                <div class="vital-value-group">
+                    <span id="val-heart-rate" class="vital-value">75</span>
+                    <span class="vital-unit">BPM</span>
+                </div>
+                <span id="pill-hr-status" class="vital-status-pill normal">NORMAL</span>
+            </div>
+
+            <!-- SpO2 Oxygen Saturation Card -->
+            <div class="card vital-card">
+                <div class="vital-card-header">
+                    <span>BLOOD OXYGEN (SpO2)</span>
+                    <span class="vital-icon">🫁</span>
+                </div>
+                <div class="vital-value-group">
+                    <span id="val-spo2" class="vital-value">98</span>
+                    <span class="vital-unit">%</span>
+                </div>
+                <span id="pill-spo2-status" class="vital-status-pill normal">NORMAL</span>
+            </div>
+
+            <!-- Body Temperature Card -->
+            <div class="card vital-card">
+                <div class="vital-card-header">
+                    <span>BODY TEMPERATURE</span>
+                    <span class="vital-icon">🌡️</span>
+                </div>
+                <div class="vital-value-group">
+                    <span id="val-temp" class="vital-value">36.6</span>
+                    <span class="vital-unit">°C</span>
+                </div>
+                <span id="pill-temp-status" class="vital-status-pill normal">NORMAL</span>
+            </div>
+        </div>
+
+        <!-- 2-Column Main Content Section -->
+        <div class="dashboard-main-grid">
+            
+            <!-- Left Column: Health Trend Charts & GPS Map -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                
+                <!-- Historic Trend Charts -->
+                <div class="card">
+                    <div class="card-title">
+                        <span>Biometrics Real-Time Trend Charts</span>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">Last 15 telemetry samples</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+                        <div>
+                            <div style="font-size:0.85rem; color:var(--accent-cyan); font-weight:600; margin-bottom:0.4rem;">Heart Rate (BPM)</div>
+                            <div style="height: 140px; position: relative;">
+                                <canvas id="chart-heart-rate"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.85rem; color:var(--accent-blue); font-weight:600; margin-bottom:0.4rem;">SpO2 Oxygen (%)</div>
+                            <div style="height: 140px; position: relative;">
+                                <canvas id="chart-spo2"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.85rem; color:var(--status-warning); font-weight:600; margin-bottom:0.4rem;">Body Temperature (°C)</div>
+                            <div style="height: 140px; position: relative;">
+                                <canvas id="chart-temperature"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GPS Map Section -->
+                <div class="card">
+                    <div class="card-title">
+                        <span>Patient Location & Geofence</span>
+                        <button id="btn-open-google-maps" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.6rem;">
+                            🗺️ Open Google Maps
+                        </button>
+                    </div>
+                    <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;">
+                        Coordinates: Lat <span id="location-lat" style="font-weight:700;">28.6139</span>, Lng <span id="location-lng" style="font-weight:700;">77.2090</span>
+                    </div>
+                    <div id="map-container"></div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Patient Profile, SOS Panic Card & Simulation Shortcuts -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                
+                <!-- SOS Manual Panic Trigger -->
+                <div class="card sos-card">
+                    <h3 style="color:#ef4444; font-size:1.1rem; font-weight:800;">EMERGENCY SOS OVERRIDE</h3>
+                    <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.25rem;">Press in case of immediate distress</p>
+                    
+                    <button id="btn-trigger-sos" class="sos-btn-trigger">
+                        <span>🚨</span>
+                        <span>SOS</span>
+                    </button>
+                    
+                    <span style="font-size:0.75rem; color:var(--text-muted);">Triggers siren & notifies caregivers</span>
+                </div>
+
+                <!-- Patient Profile Info -->
+                <div class="card">
+                    <h3 class="card-title">Patient Profile</h3>
+                    <div class="patient-info-list">
+                        <div class="patient-info-item">
+                            <span class="label">Patient Name:</span>
+                            <span class="val">Eleanor Vance</span>
+                        </div>
+                        <div class="patient-info-item">
+                            <span class="label">Age / Gender:</span>
+                            <span class="val">68 yrs / Female</span>
+                        </div>
+                        <div class="patient-info-item">
+                            <span class="label">Primary Caregiver:</span>
+                            <span class="val">Dr. Marcus Vance</span>
+                        </div>
+                        <div class="patient-info-item">
+                            <span class="label">Contact Phone:</span>
+                            <span class="val">+1 (555) 234-5678</span>
+                        </div>
+                        <div class="patient-info-item">
+                            <span class="label">Last Data Packet:</span>
+                            <span id="val-last-updated" class="val">Just Now</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hackathon Quick Demo Triggers -->
+                <div class="card" style="border: 1px dashed var(--accent-cyan);">
+                    <h4 style="font-size:0.9rem; color:var(--accent-cyan); margin-bottom:0.5rem;">⚡ Hackathon Demo Controls</h4>
+                    <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.75rem;">Test system response without physical sensors:</p>
+                    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                        <button onclick="simulateDemoFall()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.4rem;">
+                            ⚠️ Trigger Simulated Fall
+                        </button>
+                        <button onclick="simulateDemoCriticalVitals()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.4rem;">
+                            📈 Trigger Critical Vitals Spike
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Fall Detection Countdown Modal -->
+    <div id="fall-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div style="font-size:3rem; margin-bottom:0.5rem;">⚠️</div>
+            <h2 style="color:var(--status-emergency); font-size:1.6rem; font-weight:800;">FALL DETECTED!</h2>
+            <p style="color:var(--text-secondary); margin-top:0.5rem;">The ESP32 MPU6050 accelerometer detected a sudden impact fall.</p>
+            
+            <div id="fall-countdown" class="countdown-timer">10</div>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.5rem;">Auto-dispatching emergency notification in seconds...</p>
+            
+            <button id="btn-cancel-fall" class="btn btn-secondary" style="width:100%; padding:0.8rem; font-size:1rem;">
+                ✋ Cancel False Alarm (I am OK)
+            </button>
+        </div>
+    </div>
+
+    <!-- External Libraries (Firebase Compat, Chart.js, Leaflet) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Application Modules -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/sensors.js"></script>
+    <script src="js/alerts.js"></script>
+    <script src="js/emergency.js"></script>
+    <script src="js/location.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

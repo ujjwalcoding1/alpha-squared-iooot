@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Alert Screen – Alpha Squared</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body style="background-color: #1a080c;">
+
+    <!-- Top Emergency Override Banner Bar -->
+    <div class="emergency-banner active">
+        <span>🚨 CRITICAL EMERGENCY MODE ACTIVE – IMMEDIATE ATTENTION REQUIRED</span>
+        <button onclick="stopEmergencySiren()" class="btn btn-secondary" style="font-size:0.75rem; padding:0.25rem 0.5rem; background:rgba(0,0,0,0.4);">
+            🔇 Mute Siren
+        </button>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="navbar" style="border-bottom: 1px solid rgba(239, 68, 68, 0.4);">
+        <div class="brand-container">
+            <div class="brand-logo" style="background: linear-gradient(135deg, #ef4444, #991b1b);">A²</div>
+            <span class="brand-title" style="background: linear-gradient(90deg, #ffffff, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Alpha Squared Emergency</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="dashboard.html" class="nav-link">← Return to Dashboard</a></li>
+            <li><a href="emergency.html" class="nav-link active" style="color:#ef4444;">Emergency Screen</a></li>
+            <li><a href="history.html" class="nav-link">History Log</a></li>
+        </ul>
+    </header>
+
+    <main class="container" style="max-width: 1100px;">
+        
+        <!-- Emergency Dispatch Header Card -->
+        <div class="card" style="background: linear-gradient(135deg, #2a0e14, var(--bg-card)); border: 2px solid var(--status-emergency); margin-bottom: 1.5rem; box-shadow: var(--shadow-emergency);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+                <div>
+                    <span class="vital-status-pill critical" style="font-size:0.9rem; padding:0.3rem 0.8rem;">
+                        EMERGENCY EVENT IN PROGRESS
+                    </span>
+                    <h1 id="emg-title" style="font-size: 2.2rem; font-weight: 800; color: #ffffff; margin-top: 0.5rem;">
+                        Manual SOS Panic Triggered
+                    </h1>
+                    <p style="color: var(--text-secondary); font-size: 0.95rem;">
+                        Patient Node: <strong style="color:#fff;">ESP32_ALPHA_01</strong> | Time: <span id="emg-time">Just Now</span>
+                    </p>
+                </div>
+
+                <div style="text-align:right;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase;">Caregiver Alert Status</div>
+                    <span id="emg-alert-status" class="mode-badge demo" style="font-size:0.95rem; margin-top:0.3rem;">
+                        Not Configured
+                    </span>
+                </div>
+            </div>
+
+            <!-- Emergency Actions Bar -->
+            <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); display:flex; gap:1rem; flex-wrap:wrap;">
+                <button id="btn-resolve-emergency" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); font-size:1rem; padding:0.8rem 1.5rem;">
+                    ✅ Acknowledge & Resolve Emergency
+                </button>
+                <a href="tel:+15552345678" class="btn btn-secondary" style="font-size:1rem; padding:0.8rem 1.5rem;">
+                    📞 Call Primary Caregiver (+1 555-0192)
+                </a>
+            </div>
+        </div>
+
+        <!-- 2 Column Emergency Details Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            
+            <!-- Vitals Captured at Emergency Instant -->
+            <div class="card">
+                <h3 class="card-title" style="color:var(--status-emergency);">Vitals at Alarm Trigger</h3>
+                
+                <div class="patient-info-list" style="margin-top:1rem;">
+                    <div class="patient-info-item">
+                        <span class="label">Patient Name:</span>
+                        <span class="val" style="font-size:1.1rem; color:#fff;">Eleanor Vance (Age 68)</span>
+                    </div>
+                    <div class="patient-info-item">
+                        <span class="label">Heart Rate:</span>
+                        <span id="emg-hr" class="val" style="color:var(--status-emergency); font-size:1.2rem; font-weight:800;">115 BPM</span>
+                    </div>
+                    <div class="patient-info-item">
+                        <span class="label">Blood Oxygen (SpO2):</span>
+                        <span id="emg-spo2" class="val" style="color:var(--status-warning); font-size:1.2rem; font-weight:800;">92 %</span>
+                    </div>
+                    <div class="patient-info-item">
+                        <span class="label">Body Temperature:</span>
+                        <span id="emg-temp" class="val" style="font-size:1.2rem; font-weight:800;">37.2 °C</span>
+                    </div>
+                    <div class="patient-info-item">
+                        <span class="label">Primary Caregiver Contact:</span>
+                        <span class="val">Dr. Marcus Vance</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patient Location Map -->
+            <div class="card">
+                <h3 class="card-title">Patient GPS Coordinates</h3>
+                <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;">
+                    Latitude: <span id="location-lat">28.6139</span> | Longitude: <span id="location-lng">77.2090</span>
+                </div>
+                <div id="map-container" style="height:230px;"></div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- JS Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/sensors.js"></script>
+    <script src="js/alerts.js"></script>
+    <script src="js/emergency.js"></script>
+    <script src="js/location.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            initLeafletMap("map-container");
+            playEmergencySiren();
+
+            // Load latest emergency data
+            const localHist = JSON.parse(localStorage.getItem("alpha_emergency_history") || "[]");
+            const latest = localHist[0] || {
+                type: "Manual SOS Panic Triggered",
+                timestamp: new Date().toLocaleString(),
+                heartRate: 115,
+                spo2: 92,
+                temperature: 37.2,
+                alertStatus: "Not Configured"
+            };
+
+            document.getElementById("emg-title").textContent = latest.type;
+            document.getElementById("emg-time").textContent = latest.timestamp;
+            document.getElementById("emg-hr").textContent = `${latest.heartRate} BPM`;
+            document.getElementById("emg-spo2").textContent = `${latest.spo2} %`;
+            document.getElementById("emg-temp").textContent = `${latest.temperature} °C`;
+            document.getElementById("emg-alert-status").textContent = latest.alertStatus || "Not Configured";
+
+            updatePatientLocation(latest.latitude || 28.6139, latest.longitude || 77.2090);
+
+            // Resolve button
+            document.getElementById("btn-resolve-emergency").onclick = () => {
+                stopEmergencySiren();
+                alert("Emergency state acknowledged and resolved.");
+                window.location.href = "dashboard.html";
+            };
+        });
+    </script>
+</body>
+</html>

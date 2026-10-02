@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpha Squared – IoT Smart Health & Emergency Detection</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <div class="brand-container">
+            <div class="brand-logo">A²</div>
+            <span class="brand-title">Alpha Squared IoT</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html" class="nav-link active">Home</a></li>
+            <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+            <li><a href="emergency.html" class="nav-link">Emergency Screen</a></li>
+            <li><a href="history.html" class="nav-link">History</a></li>
+            <li><a href="settings.html" class="nav-link">Settings</a></li>
+        </ul>
+    </header>
+
+    <!-- Main Hero Landing Section -->
+    <main class="container" style="max-width: 1000px; padding-top: 4rem; text-align: center;">
+        
+        <div style="margin-bottom: 2rem;">
+            <span class="mode-badge live" style="margin-bottom: 1rem;">
+                <span class="pulse-dot"></span> Real-Time IoT Healthcare & Emergency Response
+            </span>
+            <h1 style="font-size: 2.8rem; font-weight: 800; margin-top: 1rem; line-height: 1.2; background: linear-gradient(90deg, #ffffff, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                Next-Generation Patient Health Monitoring & Sudden Fall Detection
+            </h1>
+            <p style="color: var(--text-secondary); font-size: 1.15rem; margin-top: 1.25rem; line-height: 1.6;">
+                Alpha Squared bridges wearable ESP32 biometrics with zero-latency Firebase Realtime Database streaming. Automatically detects abnormal heart rates, low oxygen levels, body temperature spikes, and impact falls to safeguard lives.
+            </p>
+        </div>
+
+        <!-- Quick Access Entry Card -->
+        <div class="card" style="max-width: 520px; margin: 2.5rem auto; text-align: left;">
+            <h2 class="card-title">Caregiver Access Portal</h2>
+            <form id="landing-login-form" onsubmit="event.preventDefault(); loginUser('caregiver@alphasquared.org'); window.location.href='dashboard.html';">
+                <div style="margin-bottom: 1.2rem;">
+                    <label style="display:block; color:var(--text-secondary); font-size:0.9rem; margin-bottom:0.4rem;">Caregiver Email / ID</label>
+                    <input type="email" value="caregiver@alphasquared.org" required style="width:100%; padding:0.75rem; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:#fff; font-size:1rem;">
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display:block; color:var(--text-secondary); font-size:0.9rem; margin-bottom:0.4rem;">Monitoring Target Node</label>
+                    <input type="text" value="ESP32_ALPHA_01 (Eleanor Vance)" readonly style="width:100%; padding:0.75rem; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-muted); font-size:0.95rem;">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%; padding:0.9rem; font-size:1.05rem;">
+                    🚀 Open Live Dashboard
+                </button>
+            </form>
+        </div>
+
+        <!-- Key Features Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 4rem; text-align: left;">
+            <div class="card">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">❤️</div>
+                <h3 style="margin-bottom:0.5rem; font-size:1.1rem;">Biometric Vitals Stream</h3>
+                <p style="color:var(--text-secondary); font-size:0.9rem;">Real-time continuous measurement of Heart Rate (BPM), SpO2 (%), and Body Temperature (°C).</p>
+            </div>
+            <div class="card">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+                <h3 style="margin-bottom:0.5rem; font-size:1.1rem;">MPU6050 Impact Detection</h3>
+                <p style="color:var(--text-secondary); font-size:0.9rem;">Vector magnitude free-fall and sudden impact detection with a 10s false-alarm cancel window.</p>
+            </div>
+            <div class="card">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📍</div>
+                <h3 style="margin-bottom:0.5rem; font-size:1.1rem;">Live GPS Patient Mapping</h3>
+                <p style="color:var(--text-secondary); font-size:0.9rem;">Integrated Leaflet.js interactive maps to pinpoint exact location during emergencies.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="footer">
+        Alpha Squared – IoT Smart Health & Emergency Detection System &copy; 2026 Hackathon Prototype created by ujjwal sharma
+    </footer>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>
