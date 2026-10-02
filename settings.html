@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Settings & Thresholds – Alpha Squared</title>
+    <title>System Settings & Caregiver Alerts – Alpha Squared</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
@@ -59,8 +59,8 @@
         
         <div class="dashboard-header">
             <div class="header-title">
-                <h1>Configuration & Threshold Settings</h1>
-                <p>Customize patient profiles, emergency caregiver alerts, and clinical alert boundaries</p>
+                <h1>Configuration & Caregiver Alert API Settings</h1>
+                <p>Customize patient profiles, emergency family alerts (Telegram / SMS / Webhook), and clinical thresholds</p>
             </div>
         </div>
 
@@ -91,9 +91,39 @@
                         <input type="text" id="cfg-caregiver-1" value="Dr. Marcus Vance (+1 555-0192)" class="form-input" required>
                     </div>
                     <div class="form-group">
-                        <label>Secondary Caregiver Contact</label>
+                        <label>Secondary Caregiver / Family Contact</label>
                         <input type="text" id="cfg-caregiver-2" value="Sarah Jenkins (+1 555-0144)" class="form-input">
                     </div>
+                </div>
+            </div>
+
+            <!-- Family & Caregiver API Notifications Setup -->
+            <div class="card" style="margin-bottom: 1.5rem; border: 1px solid var(--accent-blue);">
+                <h3 class="card-title" style="color:var(--accent-cyan);">📲 Instant Family Notification API Configuration</h3>
+                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">
+                    Connect Telegram Bot API (100% Free) or custom Webhook/Twilio API to send instant SMS & SOS alerts directly to caregiver mobile phones during emergencies.
+                </p>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Telegram Bot Token (Free Instant SMS Alert)</label>
+                        <input type="text" id="cfg-telegram-token" placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Telegram Caregiver Chat ID</label>
+                        <input type="text" id="cfg-telegram-chatid" placeholder="e.g. 987654321" class="form-input">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:0.5rem;">
+                    <label>Custom Webhook / SMS API Endpoint URL</label>
+                    <input type="url" id="cfg-webhook-url" placeholder="https://api.example.com/emergency-alerts/send" class="form-input">
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; margin-top:0.5rem;">
+                    <button type="button" onclick="testNotificationAlert()" class="btn btn-secondary" style="font-size:0.85rem; padding:0.4rem 1rem;">
+                        🧪 Test Emergency Notification Alert
+                    </button>
                 </div>
             </div>
 
@@ -143,6 +173,7 @@
 
     <!-- JS Scripts -->
     <script src="js/sensors.js"></script>
+    <script src="js/alerts.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const thresholds = getHealthThresholds();
@@ -151,6 +182,12 @@
             document.getElementById("cfg-spo2-critical").value = thresholds.spo2Critical || 91;
             document.getElementById("cfg-temp-min").value = thresholds.tempMin || 35.5;
             document.getElementById("cfg-temp-max").value = thresholds.tempMax || 38.5;
+
+            // Load API Config
+            const apiCfg = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
+            document.getElementById("cfg-telegram-token").value = apiCfg.telegramToken || "";
+            document.getElementById("cfg-telegram-chatid").value = apiCfg.telegramChatId || "";
+            document.getElementById("cfg-webhook-url").value = apiCfg.webhookUrl || "";
         });
 
         function saveSystemSettings(event) {
@@ -161,18 +198,33 @@
                 hrMax: parseInt(document.getElementById("cfg-hr-max").value),
                 hrWarnLow: 60,
                 hrWarnHigh: 100,
-                
                 spo2Critical: parseInt(document.getElementById("cfg-spo2-critical").value),
                 spo2Warning: 94,
-                
                 tempMin: parseFloat(document.getElementById("cfg-temp-min").value),
                 tempMax: parseFloat(document.getElementById("cfg-temp-max").value),
                 tempWarnLow: 36.0,
                 tempWarnHigh: 37.6
             };
-
             saveHealthThresholds(newThresholds);
-            alert("Configuration settings updated successfully!");
+
+            const apiConfig = {
+                telegramToken: document.getElementById("cfg-telegram-token").value.trim(),
+                telegramChatId: document.getElementById("cfg-telegram-chatid").value.trim(),
+                webhookUrl: document.getElementById("cfg-webhook-url").value.trim()
+            };
+            localStorage.setItem("alpha_alert_api_config", JSON.stringify(apiConfig));
+
+            alert("Configuration settings & Caregiver Alert API updated successfully!");
+        }
+
+        function testNotificationAlert() {
+            const sampleEmergency = {
+                eventId: "TEST_EMG_" + Date.now(),
+                type: "Manual Test Alert",
+                vitals: { heartRate: 110, spo2: 92, temperature: 37.4, latitude: 28.6139, longitude: 77.2090 }
+            };
+            dispatchCaregiverAlert(sampleEmergency);
+            alert("Test alert triggered! Check your browser notifications or Telegram app.");
         }
     </script>
 </body>
