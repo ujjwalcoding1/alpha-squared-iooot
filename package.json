@@ -1,0 +1,28 @@
+{
+  "name": "alpha-squared-iooot",
+  "version": "1.0.0",
+  "description": "![Alpha Squared Banner](web/assets/images/banner.png)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.5",
+    "nodemailer": "^10.0.13"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ujjwalcoding1/alpha-squared-iooot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ujjwalcoding1/alpha-squared-iooot/issues"
+  },
+  "homepage": "https://github.com/ujjwalcoding1/alpha-squared-iooot#readme"
+}

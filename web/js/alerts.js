@@ -78,79 +78,85 @@ function triggerNativePushNotification(title, bodyMessage) {
 }
 
 /**
- * Dispatches notification to Caregiver via Webhook / Telegram Bot API / SMS service
+ * Dispatches emergency notification to Caregiver via secure backend (Gmail Email)
  * @param {Object} emergencyDetails { eventId, type, vitals }
  */
 async function dispatchCaregiverAlert(emergencyDetails) {
     console.log("[Alerts] Dispatching caregiver notification...", emergencyDetails);
 
-    // Fired native push notification to browser/mobile
+    // Fire native browser push notification (local, no credentials needed)
     triggerNativePushNotification(
         `🚨 EMERGENCY ALERT: ${emergencyDetails.type}`,
         `Patient Eleanor Vance needs help! HR: ${emergencyDetails.vitals.heartRate || '--'} BPM, SpO2: ${emergencyDetails.vitals.spo2 || '--'}%`
     );
 
-    // Read Caregiver Alert API config from LocalStorage
+    // Read API config from LocalStorage (only backendUrl is stored — no credentials)
     const alertConfig = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
+    const backendUrl  = alertConfig.backendUrl  || "";
+    const webhookUrl  = alertConfig.webhookUrl  || "";
 
-    const webhookUrl = alertConfig.webhookUrl || "";
-    const telegramToken = alertConfig.telegramToken || "";
-    const telegramChatId = alertConfig.telegramChatId || "";
-
-    // 1. Dispatch via Telegram Bot API if configured (Free & Instant SMS/Message to Caregiver Phone App)
-    if (telegramToken && telegramChatId) {
+    // 1. Dispatch via secure Vercel backend → Gmail (Nodemailer)
+    //    SECURITY: Gmail credentials (sender, receiver, app password) NEVER leave the server.
+    if (backendUrl) {
         try {
-            const textMsg = encodeURIComponent(
-                `🚨 *ALPHA SQUARED EMERGENCY ALERT*\n\n` +
-                `*Event:* ${emergencyDetails.type}\n` +
-                `*Patient:* Eleanor Vance\n` +
-                `*Vitals:* HR ${emergencyDetails.vitals.heartRate} BPM | SpO2 ${emergencyDetails.vitals.spo2}% | Temp ${emergencyDetails.vitals.temperature}°C\n` +
-                `*Location:* https://maps.google.com/?q=${emergencyDetails.vitals.latitude || 28.6139},${emergencyDetails.vitals.longitude || 77.2090}\n` +
-                `*Timestamp:* ${new Date().toLocaleString()}`
-            );
-            
-            const tgUrl = `https://api.telegram.org/bot${telegramToken}/sendMessage?chat_id=${telegramChatId}&text=${textMsg}&parse_mode=Markdown`;
-            fetch(tgUrl).catch(err => console.error("Telegram dispatch error:", err));
+            const backendRes = await fetch(backendUrl, {
+                method:  "POST",
+                headers: { "Content-Type": "application/json" },
+                body:    JSON.stringify({
+                    source:  "emergency_dispatch",
+                    eventId: emergencyDetails.eventId,
+                    type:    emergencyDetails.type,
+                    vitals:  emergencyDetails.vitals
+                })
+            });
+            const backendData = await backendRes.json().catch(() => ({}));
 
-            return {
-                status: "Alert Sent (Telegram API)",
-                message: "Instant SOS alert dispatched to Caregiver Telegram App."
-            };
+            if (backendData.success) {
+                return {
+                    status:  "Alert Sent (Email via Secure Backend)",
+                    message: "Emergency alert email dispatched to caregiver inbox."
+                };
+            } else {
+                console.error("[Alerts] Backend email dispatch error:", backendData.message);
+                return {
+                    status:  "Alert Failed (Backend Error)",
+                    message: backendData.message || "Backend returned an error."
+                };
+            }
         } catch (err) {
-            console.error("Telegram API failed:", err);
+            console.error("[Alerts] Backend fetch failed:", err);
         }
     }
 
-    // 2. Dispatch via Custom Webhook / Twilio / Email API Endpoint if configured
+    // 2. Dispatch via Custom Webhook (future integration)
     if (webhookUrl) {
         try {
             await fetch(webhookUrl, {
-                method: "POST",
+                method:  "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(emergencyDetails)
+                body:    JSON.stringify(emergencyDetails)
             });
-
             return {
-                status: "Alert Sent (Webhook API)",
+                status:  "Alert Sent (Webhook API)",
                 message: `Successfully posted to webhook: ${webhookUrl}`
             };
         } catch (err) {
-            console.error("Webhook POST failed:", err);
+            console.error("[Alerts] Webhook POST failed:", err);
             return {
-                status: "Alert Failed",
+                status:  "Alert Failed",
                 message: err.message
             };
         }
     }
 
-    // Default Fallback mode when API credentials are pending in Settings
+    // Default fallback — browser notification only
     return {
-        status: "Browser Notified",
-        message: "Browser & Sound alarm triggered. (To connect Telegram/Twilio SMS API, configure settings)."
+        status:  "Browser Notified",
+        message: "Browser & sound alarm triggered. (Configure Email Backend URL in Settings to send real alerts.)"
     };
 }
 
-// Request permission on script load
+// Request notification permission on script load
 document.addEventListener("DOMContentLoaded", () => {
     initAlertPermissions();
 });

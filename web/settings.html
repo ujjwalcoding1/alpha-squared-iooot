@@ -101,13 +101,13 @@
             <div class="card" style="margin-bottom: 1.5rem; border: 1px solid var(--accent-blue);">
                 <h3 class="card-title" style="color:var(--accent-cyan);">📲 Instant Family Notification API Configuration</h3>
                 <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">
-                    Connect Telegram Bot API (100% Free) or custom Webhook/Twilio API to send instant SMS & SOS alerts directly to caregiver mobile phones during emergencies.
+                    Connect a secure backend (Vercel Serverless) to send <strong>Instant Telegram Emergency Alerts</strong> directly to caregiver mobile phones during emergencies. The Bot Token is stored only as a server environment variable — never in the browser or source code.
                 </p>
 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>Telegram Bot Token (Free Instant SMS Alert)</label>
-                        <input type="text" id="cfg-telegram-token" placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ" class="form-input">
+                        <label>Telegram Bot Token (Secure Backend Configuration)</label>
+                        <input type="text" id="cfg-telegram-token" placeholder="Stored securely on server — do not paste token here" class="form-input" readonly title="For security, the Bot Token is configured only as a server environment variable. This field is display-only.">
                     </div>
                     <div class="form-group">
                         <label>Telegram Caregiver Chat ID</label>
@@ -116,12 +116,19 @@
                 </div>
 
                 <div class="form-group" style="margin-top:0.5rem;">
-                    <label>Custom Webhook / SMS API Endpoint URL</label>
+                    <label>🔗 Backend API URL <span style="color:var(--status-emergency); font-weight:600;">(Required)</span></label>
+                    <input type="url" id="cfg-backend-url" placeholder="https://your-project.vercel.app/api/send-telegram-alert" class="form-input">
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.3rem;">Enter your Vercel deployment URL after deploying the backend.</div>
+                </div>
+
+                <div class="form-group" style="margin-top:0.5rem;">
+                    <label>Custom Webhook / SMS API Endpoint URL <span style="font-weight:400; color:var(--text-muted);">(Future Integration)</span></label>
                     <input type="url" id="cfg-webhook-url" placeholder="https://api.example.com/emergency-alerts/send" class="form-input">
                 </div>
 
-                <div style="display:flex; justify-content:flex-end; margin-top:0.5rem;">
-                    <button type="button" onclick="testNotificationAlert()" class="btn btn-secondary" style="font-size:0.85rem; padding:0.4rem 1rem;">
+                <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; justify-content:flex-end; margin-top:0.5rem;">
+                    <span id="test-alert-status" style="font-size:0.85rem; color:var(--text-secondary);"></span>
+                    <button type="button" id="btn-test-alert" onclick="testNotificationAlert()" class="btn btn-secondary" style="font-size:0.85rem; padding:0.4rem 1rem;">
                         🧪 Test Emergency Notification Alert
                     </button>
                 </div>
@@ -183,11 +190,12 @@
             document.getElementById("cfg-temp-min").value = thresholds.tempMin || 35.5;
             document.getElementById("cfg-temp-max").value = thresholds.tempMax || 38.5;
 
-            // Load API Config
+            // Load API Config — NOTE: token is NEVER stored or loaded here
             const apiCfg = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
-            document.getElementById("cfg-telegram-token").value = apiCfg.telegramToken || "";
+            // cfg-telegram-token field is readonly — token lives only in server env vars
             document.getElementById("cfg-telegram-chatid").value = apiCfg.telegramChatId || "";
-            document.getElementById("cfg-webhook-url").value = apiCfg.webhookUrl || "";
+            document.getElementById("cfg-backend-url").value    = apiCfg.backendUrl    || "";
+            document.getElementById("cfg-webhook-url").value    = apiCfg.webhookUrl    || "";
         });
 
         function saveSystemSettings(event) {
@@ -207,24 +215,69 @@
             };
             saveHealthThresholds(newThresholds);
 
+            // SECURITY: Do NOT save telegramToken in localStorage.
+            // The token lives only as a Vercel environment variable.
             const apiConfig = {
-                telegramToken: document.getElementById("cfg-telegram-token").value.trim(),
                 telegramChatId: document.getElementById("cfg-telegram-chatid").value.trim(),
-                webhookUrl: document.getElementById("cfg-webhook-url").value.trim()
+                backendUrl:     document.getElementById("cfg-backend-url").value.trim(),
+                webhookUrl:     document.getElementById("cfg-webhook-url").value.trim()
             };
             localStorage.setItem("alpha_alert_api_config", JSON.stringify(apiConfig));
 
             alert("Configuration settings & Caregiver Alert API updated successfully!");
         }
 
-        function testNotificationAlert() {
-            const sampleEmergency = {
-                eventId: "TEST_EMG_" + Date.now(),
-                type: "Manual Test Alert",
-                vitals: { heartRate: 110, spo2: 92, temperature: 37.4, latitude: 28.6139, longitude: 77.2090 }
-            };
-            dispatchCaregiverAlert(sampleEmergency);
-            alert("Test alert triggered! Check your browser notifications or Telegram app.");
+        /**
+         * Sends a test Telegram notification via the secure Vercel backend.
+         * NEVER calls Telegram directly from the browser.
+         * NEVER uses or reads the Bot Token on the frontend.
+         */
+        async function testNotificationAlert() {
+            const statusEl = document.getElementById("test-alert-status");
+            const btn      = document.getElementById("btn-test-alert");
+
+            // Read the backend URL from the field
+            const backendUrl = document.getElementById("cfg-backend-url").value.trim();
+
+            if (!backendUrl) {
+                statusEl.style.color = "#ef4444";
+                statusEl.textContent = "⚠️ Please enter your Backend API URL first.";
+                return;
+            }
+
+            // Prevent double-clicks while request is in flight
+            btn.disabled = true;
+            statusEl.style.color = "var(--text-secondary)";
+            statusEl.textContent = "⏳ Sending test alert…";
+
+            try {
+                const response = await fetch(backendUrl, {
+                    method:  "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body:    JSON.stringify({ source: "settings_test_button" })
+                });
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch {
+                    throw new Error("Unexpected response from backend (not JSON).");
+                }
+
+                if (data.success) {
+                    statusEl.style.color = "#10b981"; // green
+                    statusEl.textContent = "✅ Test alert sent successfully. Check the caregiver's Telegram.";
+                } else {
+                    statusEl.style.color = "#ef4444";
+                    statusEl.textContent = "❌ " + (data.message || "Backend returned an error.");
+                }
+            } catch (err) {
+                statusEl.style.color = "#ef4444";
+                statusEl.textContent = "❌ Network error: " + err.message;
+                console.error("[TestAlert] Fetch failed:", err);
+            } finally {
+                btn.disabled = false;
+            }
         }
     </script>
 </body>
