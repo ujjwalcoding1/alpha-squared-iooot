@@ -101,11 +101,17 @@
 
             <!-- Patient Location Map -->
             <div class="card">
-                <h3 class="card-title">Patient GPS Coordinates</h3>
-                <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;">
-                    Latitude: <span id="location-lat">28.6139</span> | Longitude: <span id="location-lng">77.2090</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <h3 class="card-title" style="margin:0;">📍 Patient GPS Location</h3>
+                    <a id="btn-open-google-maps" href="https://www.google.com/maps" target="_blank" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.7rem; text-decoration:none;">
+                        🗺️ Google Maps
+                    </a>
                 </div>
-                <div id="map-container" style="height:230px;"></div>
+                <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem; display:flex; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                    <span>Lat: <strong id="location-lat" style="color:#fff;">28.6139</strong> | Lng: <strong id="location-lng" style="color:#fff;">77.2090</strong></span>
+                    <span id="location-status-badge" class="vital-status-pill normal" style="font-size:0.72rem;">GPS READY</span>
+                </div>
+                <div id="map-container" style="height:220px; border-radius:8px;"></div>
             </div>
 
         </div>
@@ -143,7 +149,42 @@
             document.getElementById("emg-hr").textContent = `${latest.heartRate} BPM`;
             document.getElementById("emg-spo2").textContent = `${latest.spo2} %`;
             document.getElementById("emg-temp").textContent = `${latest.temperature} °C`;
-            document.getElementById("emg-alert-status").textContent = latest.alertStatus || "Not Configured";
+            const statusBadge = document.getElementById("emg-alert-status");
+            if (statusBadge) {
+                statusBadge.textContent = latest.alertStatus || "Alert Pending";
+                if (latest.alertSuccess) {
+                    statusBadge.className = "vital-status-pill normal";
+                    statusBadge.style.background = "var(--status-safe-bg)";
+                    statusBadge.style.color = "var(--status-safe)";
+                } else {
+                    statusBadge.className = "vital-status-pill warning";
+                }
+            }
+
+            const gpsBadge = document.getElementById("location-status-badge");
+            const mapsLinkBtn = document.getElementById("btn-open-google-maps");
+            const hasGps = latest.locationAvailable !== false && latest.latitude && latest.longitude;
+
+            if (gpsBadge) {
+                if (hasGps) {
+                    gpsBadge.className = "vital-status-pill normal";
+                    gpsBadge.textContent = "✓ LIVE GPS PINPOINTED";
+                } else {
+                    gpsBadge.className = "vital-status-pill critical";
+                    gpsBadge.textContent = "⚠️ GPS UNAVAILABLE";
+                }
+            }
+
+            if (mapsLinkBtn) {
+                if (latest.mapsUrl) {
+                    mapsLinkBtn.href = latest.mapsUrl;
+                } else if (hasGps) {
+                    mapsLinkBtn.href = `https://www.google.com/maps?q=${latest.latitude},${latest.longitude}`;
+                } else {
+                    mapsLinkBtn.style.opacity = "0.6";
+                    mapsLinkBtn.title = "GPS was unavailable for this event";
+                }
+            }
 
             updatePatientLocation(latest.latitude || 28.6139, latest.longitude || 77.2090);
 

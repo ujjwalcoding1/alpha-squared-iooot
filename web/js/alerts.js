@@ -1,162 +1,217 @@
 /**
- * Alpha Squared - Emergency Alert & Caregiver Notification Manager
+ * Alpha Squared - Alert Notifications & Siren Dispatch Engine
  * 
- * Supports:
- * 1. Native Mobile / Browser Push Notifications (Web Notification API)
- * 2. Webhook / Telegram Bot API / SMS Gateway Integration for Family & Caregivers
- * 3. Web Audio Emergency Alarm Siren
+ * Secure Architecture:
+ * - Credentials (Gmail, App Password, etc.) NEVER stored or handled in frontend.
+ * - Emergency alerts are securely POSTed to the backend API endpoint (/api/send-email-alert).
+ * - Plays local browser Web Audio synthesizer siren and triggers Native Push Notifications.
  */
 
-let audioContext = null;
+let sirenAudioContext = null;
+let sirenOscillator = null;
+let sirenGain = null;
 let sirenInterval = null;
 
-// Initialize Browser Push Notification Permission
+/**
+ * Initializes browser Web Notification permissions
+ */
 function initAlertPermissions() {
     if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission().then(permission => {
-            console.log(`[Alerts] Push Notification permission: ${permission}`);
+            console.log("[Alerts] Browser Notification permission:", permission);
         });
     }
 }
 
-// Synthesize Emergency Siren Sound via Web Audio API
-function playEmergencySiren() {
-    try {
-        if (!audioContext) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-
-        if (sirenInterval) return; // Already playing
-
-        let highPitch = true;
-        sirenInterval = setInterval(() => {
-            if (!audioContext) return;
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(highPitch ? 880 : 587.33, audioContext.currentTime); // A5 / D5 pitch
-
-            gain.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.35);
-
-            osc.connect(gain);
-            gain.connect(audioContext.destination);
-
-            osc.start();
-            osc.stop(audioContext.currentTime + 0.35);
-
-            highPitch = !highPitch;
-        }, 400);
-    } catch (e) {
-        console.warn("[Alerts] Audio synth error:", e);
-    }
-}
-
-function stopEmergencySiren() {
-    if (sirenInterval) {
-        clearInterval(sirenInterval);
-        sirenInterval = null;
-        console.log("[Alerts] Siren audio muted.");
-    }
-}
-
-// Send Native Desktop / Android Mobile Push Notification
-function triggerNativePushNotification(title, bodyMessage) {
+/**
+ * Fires local browser Push Notification
+ */
+function triggerNativePushNotification(title, message) {
     if ("Notification" in window && Notification.permission === "granted") {
         try {
             new Notification(title, {
-                body: bodyMessage,
-                icon: "assets/logo/logo.png",
-                vibrate: [200, 100, 200, 100, 200]
+                body: message,
+                icon: "assets/logo/logo.png"
             });
-            console.log("[Alerts] Native browser push notification fired!");
         } catch (e) {
-            console.warn("[Alerts] Push notification error:", e);
+            console.error("[Alerts] Error showing browser notification:", e);
         }
     }
 }
 
 /**
- * Dispatches emergency notification to Caregiver via secure backend (Gmail Email)
- * @param {Object} emergencyDetails { eventId, type, vitals }
+ * Generates an audible Emergency Siren using the Web Audio API
  */
-async function dispatchCaregiverAlert(emergencyDetails) {
-    console.log("[Alerts] Dispatching caregiver notification...", emergencyDetails);
+function playEmergencySiren() {
+    try {
+        if (!sirenAudioContext) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            sirenAudioContext = new AudioContext();
+        }
 
-    // Fire native browser push notification (local, no credentials needed)
-    triggerNativePushNotification(
-        `🚨 EMERGENCY ALERT: ${emergencyDetails.type}`,
-        `Patient Eleanor Vance needs help! HR: ${emergencyDetails.vitals.heartRate || '--'} BPM, SpO2: ${emergencyDetails.vitals.spo2 || '--'}%`
-    );
+        if (sirenAudioContext.state === 'suspended') {
+            sirenAudioContext.resume();
+        }
 
-    // Read API config from LocalStorage (only backendUrl is stored — no credentials)
-    const alertConfig = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
-    const backendUrl  = alertConfig.backendUrl  || "";
-    const webhookUrl  = alertConfig.webhookUrl  || "";
+        if (sirenOscillator) return; // Already playing
 
-    // 1. Dispatch via secure Vercel backend → Gmail (Nodemailer)
-    //    SECURITY: Gmail credentials (sender, receiver, app password) NEVER leave the server.
-    if (backendUrl) {
-        try {
-            const backendRes = await fetch(backendUrl, {
-                method:  "POST",
-                headers: { "Content-Type": "application/json" },
-                body:    JSON.stringify({
-                    source:  "emergency_dispatch",
-                    eventId: emergencyDetails.eventId,
-                    type:    emergencyDetails.type,
-                    vitals:  emergencyDetails.vitals
-                })
-            });
-            const backendData = await backendRes.json().catch(() => ({}));
+        sirenOscillator = sirenAudioContext.createOscillator();
+        sirenGain = sirenAudioContext.createGain();
 
-            if (backendData.success) {
-                return {
-                    status:  "Alert Sent (Email via Secure Backend)",
-                    message: "Emergency alert email dispatched to caregiver inbox."
-                };
-            } else {
-                console.error("[Alerts] Backend email dispatch error:", backendData.message);
-                return {
-                    status:  "Alert Failed (Backend Error)",
-                    message: backendData.message || "Backend returned an error."
-                };
+        sirenOscillator.type = "sawtooth";
+        sirenGain.gain.setValueAtTime(0.2, sirenAudioContext.currentTime);
+
+        sirenOscillator.connect(sirenGain);
+        sirenGain.connect(sirenAudioContext.destination);
+
+        let highFreq = false;
+        sirenOscillator.frequency.setValueAtTime(700, sirenAudioContext.currentTime);
+        sirenOscillator.start();
+
+        sirenInterval = setInterval(() => {
+            if (sirenOscillator && sirenAudioContext) {
+                const targetFreq = highFreq ? 700 : 960;
+                sirenOscillator.frequency.exponentialRampToValueAtTime(
+                    targetFreq,
+                    sirenAudioContext.currentTime + 0.3
+                );
+                highFreq = !highFreq;
             }
-        } catch (err) {
-            console.error("[Alerts] Backend fetch failed:", err);
-        }
-    }
+        }, 400);
 
-    // 2. Dispatch via Custom Webhook (future integration)
-    if (webhookUrl) {
-        try {
-            await fetch(webhookUrl, {
-                method:  "POST",
-                headers: { "Content-Type": "application/json" },
-                body:    JSON.stringify(emergencyDetails)
-            });
-            return {
-                status:  "Alert Sent (Webhook API)",
-                message: `Successfully posted to webhook: ${webhookUrl}`
-            };
-        } catch (err) {
-            console.error("[Alerts] Webhook POST failed:", err);
-            return {
-                status:  "Alert Failed",
-                message: err.message
-            };
-        }
+        console.log("[Alerts] Emergency Siren activated.");
+    } catch (e) {
+        console.error("[Alerts] Web Audio Siren initialization failed:", e);
     }
-
-    // Default fallback — browser notification only
-    return {
-        status:  "Browser Notified",
-        message: "Browser & sound alarm triggered. (Configure Email Backend URL in Settings to send real alerts.)"
-    };
 }
 
-// Request notification permission on script load
+/**
+ * Stops the Emergency Siren sound
+ */
+function stopEmergencySiren() {
+    if (sirenInterval) {
+        clearInterval(sirenInterval);
+        sirenInterval = null;
+    }
+    if (sirenOscillator) {
+        try {
+            sirenOscillator.stop();
+            sirenOscillator.disconnect();
+        } catch (_) {}
+        sirenOscillator = null;
+    }
+    console.log("[Alerts] Emergency Siren muted.");
+}
+
+/**
+ * Dispatches emergency notification to Caregiver via secure backend (Gmail Email + Hooks)
+ * 
+ * @param {Object} emergencyDetails {
+ *   eventId: string,
+ *   type: string,
+ *   patientName?: string,
+ *   patientId?: string,
+ *   vitals: Object,
+ *   location: Object { available, latitude, longitude, accuracy, mapsUrl, statusText },
+ *   timestamp?: string
+ * }
+ * @returns {Promise<Object>} { success: boolean, status: string, message: string }
+ */
+async function dispatchCaregiverAlert(emergencyDetails) {
+    console.log("[Alerts] Dispatching caregiver emergency notification...", emergencyDetails);
+
+    // 1. Fire native browser push notification (local, no credentials needed)
+    const patientName = emergencyDetails.patientName || "Eleanor Vance";
+    const hr = emergencyDetails.vitals ? emergencyDetails.vitals.heartRate : '--';
+    const spo2 = emergencyDetails.vitals ? emergencyDetails.vitals.spo2 : '--';
+
+    triggerNativePushNotification(
+        `🚨 EMERGENCY ALERT: ${emergencyDetails.type}`,
+        `Patient ${patientName} needs help! HR: ${hr} BPM, SpO2: ${spo2}%`
+    );
+
+    // 2. Read backend endpoint configuration
+    const alertConfig = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
+    // Fall back to default relative /api/send-email-alert if not set
+    let backendUrl = (alertConfig.backendUrl || "").trim();
+    if (!backendUrl) {
+        backendUrl = "/api/send-email-alert";
+    }
+
+    const payload = {
+        source: "emergency_dispatch",
+        eventId: emergencyDetails.eventId,
+        type: emergencyDetails.type,
+        patientName: patientName,
+        patientId: emergencyDetails.patientId || "ESP32_ALPHA_01",
+        vitals: emergencyDetails.vitals,
+        location: emergencyDetails.location || {
+            available: false,
+            latitude: null,
+            longitude: null,
+            statusText: "Location not provided"
+        },
+        timestamp: emergencyDetails.timestamp || new Date().toLocaleString()
+    };
+
+    let backendResult = {
+        success: false,
+        status: "Pending",
+        message: ""
+    };
+
+    // 3. Dispatch to secure backend endpoint
+    try {
+        console.log(`[Alerts] POSTing emergency payload to ${backendUrl}...`);
+        const response = await fetch(backendUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.success) {
+            backendResult = {
+                success: true,
+                status: "Alert Delivered (Email to Caregivers)",
+                message: data.message || "Emergency email successfully delivered to caregiver contacts."
+            };
+        } else {
+            backendResult = {
+                success: false,
+                status: "Alert Failed (Server Error)",
+                message: data.message || `Backend responded with HTTP status ${response.status}.`
+            };
+        }
+    } catch (err) {
+        console.warn("[Alerts] Network fetch to backend failed:", err.message);
+        backendResult = {
+            success: false,
+            status: "Alert Failed (Network Error)",
+            message: `Could not reach backend API (${err.message}). Local alarm active.`
+        };
+    }
+
+    // 4. Optional custom webhook dispatch (if configured in settings)
+    if (alertConfig.webhookUrl) {
+        try {
+            await fetch(alertConfig.webhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+        } catch (wErr) {
+            console.warn("[Alerts] Custom webhook POST failed:", wErr.message);
+        }
+    }
+
+    return backendResult;
+}
+
+// Request permission on script load
 document.addEventListener("DOMContentLoaded", () => {
     initAlertPermissions();
 });

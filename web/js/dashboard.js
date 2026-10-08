@@ -42,15 +42,78 @@ function initDashboard() {
         });
     }
 
-    // SOS Button Listener
+    // SOS Button Listener with Loading, Success & Error states
     const sosBtn = document.getElementById("btn-trigger-sos");
+    const sosFeedback = document.getElementById("sos-status-feedback");
+
     if (sosBtn) {
-        sosBtn.addEventListener("click", () => {
-            const confirmSOS = confirm("🚨 ARE YOU SURE YOU WANT TO TRIGGER AN EMERGENCY SOS ALARM?");
-            if (confirmSOS) {
+        sosBtn.addEventListener("click", async () => {
+            const confirmSOS = confirm("🚨 ARE YOU SURE YOU WANT TO TRIGGER AN EMERGENCY SOS ALARM?\n\nThis will acquire your GPS coordinates and notify your registered caregivers immediately.");
+            if (!confirmSOS) return;
+
+            // 1. Loading State
+            sosBtn.disabled = true;
+            sosBtn.classList.add("loading");
+            sosBtn.innerHTML = `<span>⏳</span><span style="font-size:1.1rem; letter-spacing:1px;">SENDING...</span>`;
+            if (sosFeedback) {
+                sosFeedback.style.color = "var(--accent-cyan)";
+                sosFeedback.textContent = "📍 Acquiring GPS & notifying caregivers...";
+            }
+
+            try {
+                // 2. Capture live GPS position
+                const locResult = await getCurrentPatientLocation({ timeout: 5000 });
+                if (sosFeedback) {
+                    if (locResult.available) {
+                        sosFeedback.textContent = "✓ GPS acquired. Dispatching emergency alert email...";
+                    } else {
+                        sosFeedback.textContent = "⚠️ GPS unavailable. Dispatching alert email without coordinates...";
+                    }
+                }
+
+                // 3. Update local state and trigger emergency event
                 currentVitalsState.sos = true;
-                const event = triggerEmergencyEvent("Manual SOS Triggered", currentVitalsState);
-                window.location.href = "emergency.html";
+                if (locResult.available) {
+                    currentVitalsState.latitude = locResult.latitude;
+                    currentVitalsState.longitude = locResult.longitude;
+                }
+
+                const event = await triggerEmergencyEvent("Manual SOS Triggered", currentVitalsState, locResult);
+
+                // 4. Success vs Error State
+                if (event && event.alertSuccess) {
+                    sosBtn.innerHTML = `<span>✅</span><span style="font-size:1.1rem;">SENT!</span>`;
+                    sosBtn.style.background = "linear-gradient(135deg, #10b981, #059669)";
+                    sosBtn.style.boxShadow = "0 0 35px rgba(16, 185, 129, 0.7)";
+                    if (sosFeedback) {
+                        sosFeedback.style.color = "#10b981";
+                        sosFeedback.textContent = "✅ Emergency email dispatched to caregivers! Opening emergency screen...";
+                    }
+                } else {
+                    sosBtn.innerHTML = `<span>⚠️</span><span style="font-size:1rem;">ALARM ON</span>`;
+                    sosBtn.style.background = "linear-gradient(135deg, #f59e0b, #d97706)";
+                    if (sosFeedback) {
+                        sosFeedback.style.color = "#f59e0b";
+                        const errReason = (event && event.alertDetails) ? event.alertDetails : "Check server connection";
+                        sosFeedback.textContent = `⚠️ Email status: ${errReason}. Local siren active!`;
+                    }
+                }
+
+                // 5. Transfer to emergency screen after 1.5s delay so user sees confirmation
+                setTimeout(() => {
+                    window.location.href = "emergency.html";
+                }, 1500);
+
+            } catch (sosError) {
+                console.error("[Dashboard] SOS trigger failed:", sosError);
+                sosBtn.disabled = false;
+                sosBtn.classList.remove("loading");
+                sosBtn.innerHTML = `<span>🚨</span><span>SOS</span>`;
+                if (sosFeedback) {
+                    sosFeedback.style.color = "#ef4444";
+                    sosFeedback.textContent = `❌ SOS error: ${sosError.message}. Local siren active.`;
+                }
+                playEmergencySiren();
             }
         });
     }

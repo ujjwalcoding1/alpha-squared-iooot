@@ -3,40 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Settings & Caregiver Alerts – Alpha Squared</title>
+    <title>System Settings & Caregiver Configuration – Alpha Squared</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <style>
-        .form-group {
-            margin-bottom: 1.25rem;
-        }
-        .form-group label {
-            display: block;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.4rem;
-            font-weight: 500;
-        }
-        .form-input {
-            width: 100%;
-            padding: 0.75rem;
-            background: var(--bg-dark);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.95rem;
-        }
-        .form-input:focus {
-            outline: none;
-            border-color: var(--accent-cyan);
-        }
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1rem;
-        }
-    </style>
 </head>
 <body>
 
@@ -55,20 +25,20 @@
         </ul>
     </header>
 
-    <main class="container" style="max-width: 1000px;">
+    <main class="container" style="max-width: 800px; padding-bottom: 3rem;">
         
-        <div class="dashboard-header">
-            <div class="header-title">
-                <h1>Configuration & Caregiver Alert API Settings</h1>
-                <p>Customize patient profiles, emergency family alerts (Telegram / SMS / Webhook), and clinical thresholds</p>
-            </div>
+        <div style="margin-bottom: 2rem;">
+            <h1>Clinical Thresholds & Caregiver Alert Setup</h1>
+            <p style="color: var(--text-secondary); margin-top:0.25rem;">
+                Configure emergency notification endpoints, patient profile, and physiological alert boundaries.
+            </p>
         </div>
 
         <form id="settings-form" onsubmit="saveSystemSettings(event)">
             
-            <!-- Patient Profile & Caregivers -->
+            <!-- Patient Profile Settings -->
             <div class="card" style="margin-bottom: 1.5rem;">
-                <h3 class="card-title">Patient Profile & Emergency Contacts</h3>
+                <h3 class="card-title">Patient Profile Information</h3>
                 
                 <div class="form-grid">
                     <div class="form-group">
@@ -76,16 +46,12 @@
                         <input type="text" id="cfg-patient-name" value="Eleanor Vance" class="form-input" required>
                     </div>
                     <div class="form-group">
-                        <label>Age</label>
-                        <input type="number" id="cfg-patient-age" value="68" class="form-input" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Blood Group</label>
-                        <input type="text" id="cfg-patient-blood" value="O+" class="form-input">
+                        <label>Age & Gender</label>
+                        <input type="text" id="cfg-patient-age" value="68 yrs / Female" class="form-input" required>
                     </div>
                 </div>
 
-                <div class="form-grid" style="margin-top: 1rem;">
+                <div class="form-grid" style="margin-top:0.5rem;">
                     <div class="form-group">
                         <label>Primary Caregiver Name & Phone</label>
                         <input type="text" id="cfg-caregiver-1" value="Dr. Marcus Vance (+1 555-0192)" class="form-input" required>
@@ -99,29 +65,31 @@
 
             <!-- Family & Caregiver API Notifications Setup -->
             <div class="card" style="margin-bottom: 1.5rem; border: 1px solid var(--accent-blue);">
-                <h3 class="card-title" style="color:var(--accent-cyan);">📲 Instant Family Notification API Configuration</h3>
+                <h3 class="card-title" style="color:var(--accent-cyan);">📧 Emergency Caregiver Alert API (Gmail SMTP Backend)</h3>
                 <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">
-                    Connect Telegram Bot API (100% Free) or custom Webhook/Twilio API to send instant SMS & SOS alerts directly to caregiver mobile phones during emergencies.
+                    Sends real-time <strong>Emergency SOS & GPS Location Alerts</strong> to parents, caregivers, and emergency contacts via your secure Vercel serverless backend.
                 </p>
 
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Telegram Bot Token (Free Instant SMS Alert)</label>
-                        <input type="text" id="cfg-telegram-token" placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label>Telegram Caregiver Chat ID</label>
-                        <input type="text" id="cfg-telegram-chatid" placeholder="e.g. 987654321" class="form-input">
+                <div style="background:rgba(14,165,233,0.08); border:1px solid rgba(14,165,233,0.3); border-radius:8px; padding:12px 16px; margin-bottom:1rem; font-size:0.82rem; color:var(--accent-cyan);">
+                    🔒 <strong>Zero-Trust Frontend Security:</strong> Gmail SMTP credentials, passwords, and API keys are stored solely as environment variables (<code>GMAIL_SENDER</code>, <code>GMAIL_RECEIVER</code>, <code>GMAIL_APP_PASSWORD</code>) on Vercel. They are never exposed in browser HTML, CSS, or JavaScript.
+                </div>
+
+                <div class="form-group">
+                    <label>🔗 Backend Alert API URL <span style="color:var(--status-emergency); font-weight:600;">(Required for Remote Delivery)</span></label>
+                    <input type="url" id="cfg-backend-url" placeholder="https://your-project.vercel.app/api/send-email-alert" class="form-input">
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.3rem;">
+                        Defaults to relative <code>/api/send-email-alert</code> when deployed on the same domain, or your Vercel deployment URL (e.g. <code>https://alpha-squared.vercel.app/api/send-email-alert</code>) when hosted on GitHub Pages.
                     </div>
                 </div>
 
                 <div class="form-group" style="margin-top:0.5rem;">
-                    <label>Custom Webhook / SMS API Endpoint URL</label>
+                    <label>Custom Webhook / SMS API Endpoint URL <span style="font-weight:400; color:var(--text-muted);">(Optional / Future Integration)</span></label>
                     <input type="url" id="cfg-webhook-url" placeholder="https://api.example.com/emergency-alerts/send" class="form-input">
                 </div>
 
-                <div style="display:flex; justify-content:flex-end; margin-top:0.5rem;">
-                    <button type="button" onclick="testNotificationAlert()" class="btn btn-secondary" style="font-size:0.85rem; padding:0.4rem 1rem;">
+                <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; justify-content:flex-end; margin-top:1rem;">
+                    <span id="test-alert-status" style="font-size:0.85rem; font-weight:600;"></span>
+                    <button type="button" id="btn-test-alert" onclick="testNotificationAlert()" class="btn btn-secondary" style="font-size:0.85rem; padding:0.5rem 1.2rem;">
                         🧪 Test Emergency Notification Alert
                     </button>
                 </div>
@@ -174,6 +142,7 @@
     <!-- JS Scripts -->
     <script src="js/sensors.js"></script>
     <script src="js/alerts.js"></script>
+    <script src="js/location.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const thresholds = getHealthThresholds();
@@ -183,10 +152,9 @@
             document.getElementById("cfg-temp-min").value = thresholds.tempMin || 35.5;
             document.getElementById("cfg-temp-max").value = thresholds.tempMax || 38.5;
 
-            // Load API Config
+            // Load API Config (secrets are NEVER stored in localStorage)
             const apiCfg = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
-            document.getElementById("cfg-telegram-token").value = apiCfg.telegramToken || "";
-            document.getElementById("cfg-telegram-chatid").value = apiCfg.telegramChatId || "";
+            document.getElementById("cfg-backend-url").value = apiCfg.backendUrl || "";
             document.getElementById("cfg-webhook-url").value = apiCfg.webhookUrl || "";
         });
 
@@ -207,24 +175,74 @@
             };
             saveHealthThresholds(newThresholds);
 
+            // Save public API URLs
             const apiConfig = {
-                telegramToken: document.getElementById("cfg-telegram-token").value.trim(),
-                telegramChatId: document.getElementById("cfg-telegram-chatid").value.trim(),
+                backendUrl: document.getElementById("cfg-backend-url").value.trim(),
                 webhookUrl: document.getElementById("cfg-webhook-url").value.trim()
             };
             localStorage.setItem("alpha_alert_api_config", JSON.stringify(apiConfig));
 
-            alert("Configuration settings & Caregiver Alert API updated successfully!");
+            alert("✅ Configuration settings & Alert API endpoint saved successfully!");
         }
 
-        function testNotificationAlert() {
-            const sampleEmergency = {
-                eventId: "TEST_EMG_" + Date.now(),
-                type: "Manual Test Alert",
-                vitals: { heartRate: 110, spo2: 92, temperature: 37.4, latitude: 28.6139, longitude: 77.2090 }
-            };
-            dispatchCaregiverAlert(sampleEmergency);
-            alert("Test alert triggered! Check your browser notifications or Telegram app.");
+        /**
+         * Sends a test emergency notification with device GPS via the backend API.
+         * Never touches email credentials in the browser.
+         */
+        async function testNotificationAlert() {
+            const statusEl = document.getElementById("test-alert-status");
+            const btn      = document.getElementById("btn-test-alert");
+
+            let backendUrl = document.getElementById("cfg-backend-url").value.trim();
+            if (!backendUrl) {
+                backendUrl = "/api/send-email-alert";
+            }
+
+            btn.disabled = true;
+            statusEl.style.color = "var(--accent-cyan)";
+            statusEl.textContent = "📍 Acquiring GPS & sending test alert...";
+
+            try {
+                // Fetch GPS coordinates for the test
+                const locResult = await getCurrentPatientLocation({ timeout: 5000 });
+
+                statusEl.textContent = "⏳ Sending test email alert via backend...";
+
+                const response = await fetch(backendUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        source: "settings_test_button",
+                        type: "TEST EMERGENCY NOTIFICATION",
+                        patientName: document.getElementById("cfg-patient-name").value || "Eleanor Vance",
+                        patientId: "ESP32_ALPHA_01",
+                        vitals: { heartRate: 75, spo2: 98, temperature: 36.6 },
+                        location: locResult,
+                        timestamp: new Date().toLocaleString()
+                    })
+                });
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch {
+                    throw new Error("Invalid response from backend (not JSON). Check URL.");
+                }
+
+                if (response.ok && data.success) {
+                    statusEl.style.color = "#10b981";
+                    statusEl.textContent = "✅ Test alert sent successfully! Check caregiver inbox.";
+                } else {
+                    statusEl.style.color = "#ef4444";
+                    statusEl.textContent = "❌ " + (data.message || "Backend reported an error.");
+                }
+            } catch (err) {
+                statusEl.style.color = "#ef4444";
+                statusEl.textContent = "❌ Network error: " + err.message;
+                console.error("[TestAlert] Fetch error:", err);
+            } finally {
+                btn.disabled = false;
+            }
         }
     </script>
 </body>

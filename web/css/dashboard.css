@@ -184,6 +184,21 @@
   transform: scale(0.96);
 }
 
+.sos-btn-trigger:disabled {
+  opacity: 0.9;
+  cursor: wait;
+  transform: none;
+}
+
+.sos-btn-trigger.loading {
+  animation: pulse-sos 1s infinite alternate;
+}
+
+@keyframes pulse-sos {
+  0% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); transform: scale(0.98); }
+  100% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.9); transform: scale(1.02); }
+}
+
 /* Patient Information Panel */
 .patient-info-list {
   display: flex;
