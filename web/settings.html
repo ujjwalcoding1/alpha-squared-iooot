@@ -76,9 +76,9 @@
 
                 <div class="form-group">
                     <label>🔗 Backend Alert API URL <span style="color:var(--status-emergency); font-weight:600;">(Required for Remote Delivery)</span></label>
-                    <input type="url" id="cfg-backend-url" placeholder="https://your-project.vercel.app/api/send-email-alert" class="form-input">
+                    <input type="url" id="cfg-backend-url" value="https://alpha-squared-iooot.vercel.app/api/send-email-alert" placeholder="https://alpha-squared-iooot.vercel.app/api/send-email-alert" class="form-input">
                     <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.3rem;">
-                        Defaults to relative <code>/api/send-email-alert</code> when deployed on the same domain, or your Vercel deployment URL (e.g. <code>https://alpha-squared.vercel.app/api/send-email-alert</code>) when hosted on GitHub Pages.
+                        Pre-configured with your active Vercel serverless endpoint: <code>https://alpha-squared-iooot.vercel.app/api/send-email-alert</code>
                     </div>
                 </div>
 
@@ -154,7 +154,8 @@
 
             // Load API Config (secrets are NEVER stored in localStorage)
             const apiCfg = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
-            document.getElementById("cfg-backend-url").value = apiCfg.backendUrl || "";
+            const DEFAULT_BACKEND_URL = "https://alpha-squared-iooot.vercel.app/api/send-email-alert";
+            document.getElementById("cfg-backend-url").value = apiCfg.backendUrl || DEFAULT_BACKEND_URL;
             document.getElementById("cfg-webhook-url").value = apiCfg.webhookUrl || "";
         });
 
@@ -175,9 +176,16 @@
             };
             saveHealthThresholds(newThresholds);
 
+            let enteredBackendUrl = document.getElementById("cfg-backend-url").value.trim();
+            // Auto-append /api/send-email-alert if user enters just the Vercel domain
+            if (enteredBackendUrl.startsWith("http") && !enteredBackendUrl.includes("/api/")) {
+                enteredBackendUrl = enteredBackendUrl.replace(/\/+$/, "") + "/api/send-email-alert";
+                document.getElementById("cfg-backend-url").value = enteredBackendUrl;
+            }
+
             // Save public API URLs
             const apiConfig = {
-                backendUrl: document.getElementById("cfg-backend-url").value.trim(),
+                backendUrl: enteredBackendUrl || "https://alpha-squared-iooot.vercel.app/api/send-email-alert",
                 webhookUrl: document.getElementById("cfg-webhook-url").value.trim()
             };
             localStorage.setItem("alpha_alert_api_config", JSON.stringify(apiConfig));
@@ -194,8 +202,15 @@
             const btn      = document.getElementById("btn-test-alert");
 
             let backendUrl = document.getElementById("cfg-backend-url").value.trim();
-            if (!backendUrl) {
-                backendUrl = "/api/send-email-alert";
+            const DEFAULT_BACKEND_URL = "https://alpha-squared-iooot.vercel.app/api/send-email-alert";
+
+            // If empty or relative, default to active Vercel serverless endpoint
+            if (!backendUrl || backendUrl.startsWith("/") || backendUrl.includes("your-project")) {
+                backendUrl = DEFAULT_BACKEND_URL;
+                document.getElementById("cfg-backend-url").value = backendUrl;
+            } else if (backendUrl.startsWith("http") && !backendUrl.includes("/api/")) {
+                backendUrl = backendUrl.replace(/\/+$/, "") + "/api/send-email-alert";
+                document.getElementById("cfg-backend-url").value = backendUrl;
             }
 
             btn.disabled = true;

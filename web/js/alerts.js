@@ -132,10 +132,12 @@ async function dispatchCaregiverAlert(emergencyDetails) {
 
     // 2. Read backend endpoint configuration
     const alertConfig = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
-    // Fall back to default relative /api/send-email-alert if not set
+    // Fall back to default deployed Vercel endpoint if not set
     let backendUrl = (alertConfig.backendUrl || "").trim();
-    if (!backendUrl) {
-        backendUrl = "/api/send-email-alert";
+    if (!backendUrl || backendUrl.startsWith("/") || backendUrl.includes("your-project")) {
+        backendUrl = "https://alpha-squared-iooot.vercel.app/api/send-email-alert";
+    } else if (backendUrl.startsWith("http") && !backendUrl.includes("/api/")) {
+        backendUrl = backendUrl.replace(/\/+$/, "") + "/api/send-email-alert";
     }
 
     const payload = {
