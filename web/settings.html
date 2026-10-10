@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Settings & Caregiver Configuration – Alpha Squared</title>
+    <title>Settings — Alpha Squared IoT Health</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/responsive.css">
@@ -16,122 +16,205 @@
             <div class="brand-logo">A²</div>
             <span class="brand-title">Alpha Squared IoT</span>
         </div>
-        <ul class="nav-links">
-            <li><a href="index.html" class="nav-link">Home</a></li>
-            <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
-            <li><a href="emergency.html" class="nav-link">Emergency Screen</a></li>
-            <li><a href="history.html" class="nav-link">History</a></li>
-            <li><a href="settings.html" class="nav-link active">Settings</a></li>
-        </ul>
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="emergency.html" class="nav-link">Emergency Screen</a></li>
+                <li><a href="history.html" class="nav-link">History</a></li>
+                <li><a href="settings.html" class="nav-link active">Settings</a></li>
+            </ul>
+        </nav>
     </header>
 
-    <main class="container" style="max-width: 800px; padding-bottom: 3rem;">
+    <main class="container" style="max-width: 820px; padding-top: 2rem; padding-bottom: 3.5rem;">
         
+        <!-- Header Title -->
         <div style="margin-bottom: 2rem;">
-            <h1>Clinical Thresholds & Caregiver Alert Setup</h1>
-            <p style="color: var(--text-secondary); margin-top:0.25rem;">
-                Configure emergency notification endpoints, patient profile, and physiological alert boundaries.
+            <h1 style="font-size: 1.85rem; font-weight: 700; color: var(--text-primary);">Settings</h1>
+            <p style="color: var(--text-secondary); margin-top: 0.35rem; font-size: 0.95rem;">
+                Configure your device, emergency alerts, and health thresholds.
             </p>
         </div>
 
-        <form id="settings-form" onsubmit="saveSystemSettings(event)">
+        <form id="settings-form" onsubmit="saveAllSettings(event)" novalidate>
             
-            <!-- Patient Profile Settings -->
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h3 class="card-title">Patient Profile Information</h3>
-                
+            <!-- SECTION A: Device & API Configuration -->
+            <section class="card" style="margin-bottom: 1.5rem;" aria-labelledby="section-device-title">
+                <div class="card-title" id="section-device-title" style="color: var(--accent-cyan); font-size: 1.05rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; margin-bottom: 1.2rem;">
+                    <span>📡 Device & API Configuration</span>
+                </div>
+
                 <div class="form-grid">
+                    <!-- Device Selection / Mode -->
                     <div class="form-group">
-                        <label>Patient Full Name</label>
-                        <input type="text" id="cfg-patient-name" value="Eleanor Vance" class="form-input" required>
+                        <label for="cfg-device-select">
+                            <span>Device Profile</span>
+                        </label>
+                        <select id="cfg-device-select" class="form-select" onchange="onDeviceSelectChange()">
+                            <option value="ALPHA-001">ALPHA-001 (Default Monitor Node)</option>
+                            <option value="NEW_DEVICE">+ Add / Configure Custom Device...</option>
+                        </select>
                     </div>
+
+                    <!-- Device Name -->
                     <div class="form-group">
-                        <label>Age & Gender</label>
-                        <input type="text" id="cfg-patient-age" value="68 yrs / Female" class="form-input" required>
+                        <label for="cfg-device-name">
+                            <span>Device Name</span>
+                        </label>
+                        <input type="text" id="cfg-device-name" class="form-input" placeholder="e.g. Primary Patient ESP32" autocomplete="off" required>
                     </div>
                 </div>
 
-                <div class="form-grid" style="margin-top:0.5rem;">
+                <div class="form-grid" style="margin-top: 0.5rem;">
+                    <!-- Device ID -->
                     <div class="form-group">
-                        <label>Primary Caregiver Name & Phone</label>
-                        <input type="text" id="cfg-caregiver-1" value="Dr. Marcus Vance (+1 555-0192)" class="form-input" required>
+                        <label for="cfg-device-id">
+                            <span>Device ID</span>
+                            <span class="label-desc">(alphanumeric identifier)</span>
+                        </label>
+                        <input type="text" id="cfg-device-id" class="form-input" placeholder="e.g. ALPHA-001" autocomplete="off" required>
                     </div>
+
+                    <!-- Backend API Base URL -->
                     <div class="form-group">
-                        <label>Secondary Caregiver / Family Contact</label>
-                        <input type="text" id="cfg-caregiver-2" value="Sarah Jenkins (+1 555-0144)" class="form-input">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Family & Caregiver API Notifications Setup -->
-            <div class="card" style="margin-bottom: 1.5rem; border: 1px solid var(--accent-blue);">
-                <h3 class="card-title" style="color:var(--accent-cyan);">📧 Emergency Caregiver Alert API (Gmail SMTP Backend)</h3>
-                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">
-                    Sends real-time <strong>Emergency SOS & GPS Location Alerts</strong> to parents, caregivers, and emergency contacts via your secure Vercel serverless backend.
-                </p>
-
-                <div style="background:rgba(14,165,233,0.08); border:1px solid rgba(14,165,233,0.3); border-radius:8px; padding:12px 16px; margin-bottom:1rem; font-size:0.82rem; color:var(--accent-cyan);">
-                    🔒 <strong>Zero-Trust Frontend Security:</strong> Gmail SMTP credentials, passwords, and API keys are stored solely as environment variables (<code>GMAIL_SENDER</code>, <code>GMAIL_RECEIVER</code>, <code>GMAIL_APP_PASSWORD</code>) on Vercel. They are never exposed in browser HTML, CSS, or JavaScript.
-                </div>
-
-                <div class="form-group">
-                    <label>🔗 Backend Alert API URL <span style="color:var(--status-emergency); font-weight:600;">(Required for Remote Delivery)</span></label>
-                    <input type="url" id="cfg-backend-url" value="https://alpha-squared-iooot.vercel.app/api/send-email-alert" placeholder="https://alpha-squared-iooot.vercel.app/api/send-email-alert" class="form-input">
-                    <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.3rem;">
-                        Pre-configured with your active Vercel serverless endpoint: <code>https://alpha-squared-iooot.vercel.app/api/send-email-alert</code>
+                        <label for="cfg-api-base-url">
+                            <span>Backend API Base URL</span>
+                        </label>
+                        <input type="url" id="cfg-api-base-url" class="form-input" placeholder="https://alpha-squared-iooot.vercel.app" autocomplete="off">
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-top:0.5rem;">
-                    <label>Custom Webhook / SMS API Endpoint URL <span style="font-weight:400; color:var(--text-muted);">(Optional / Future Integration)</span></label>
-                    <input type="url" id="cfg-webhook-url" placeholder="https://api.example.com/emergency-alerts/send" class="form-input">
+                <!-- Device Authentication Token (Masked with toggle) -->
+                <div class="form-group" style="margin-top: 0.5rem;">
+                    <label for="cfg-device-token">
+                        <span>Device Authentication Token</span>
+                        <span class="label-desc">(Used by hardware to sign telemetry)</span>
+                    </label>
+                    <div class="input-with-button">
+                        <input type="password" id="cfg-device-token" class="form-input" placeholder="Enter device token or leave blank for default demo" autocomplete="new-password">
+                        <button type="button" id="btn-toggle-token-mask" onclick="toggleTokenMask()" class="btn btn-secondary" style="padding: 0 1rem; height: 42px; font-size: 0.85rem; white-space: nowrap;">
+                            👁️ Show
+                        </button>
+                    </div>
+                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        🔒 Never stored in plaintext public logs. Used to authenticate sensor readings with the ingestion API.
+                    </div>
                 </div>
 
-                <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; justify-content:flex-end; margin-top:1rem;">
-                    <span id="test-alert-status" style="font-size:0.85rem; font-weight:600;"></span>
-                    <button type="button" id="btn-test-alert" onclick="testNotificationAlert()" class="btn btn-secondary" style="font-size:0.85rem; padding:0.5rem 1.2rem;">
-                        🧪 Test Emergency Notification Alert
+                <!-- Device Buttons & Inline Feedback -->
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center; margin-top: 1.25rem; flex-wrap: wrap;">
+                    <button type="button" id="btn-test-api" onclick="testApiConnection()" class="btn btn-secondary" style="font-size: 0.88rem;">
+                        ⚡ Test API Connection
+                    </button>
+                    <button type="button" id="btn-save-device-only" onclick="saveDeviceSection()" class="btn btn-primary" style="font-size: 0.88rem;">
+                        💾 Save Device Settings
                     </button>
                 </div>
-            </div>
+                <div id="device-feedback" class="feedback-msg" role="status" aria-live="polite"></div>
+            </section>
 
-            <!-- Centralized Clinical Vitals Thresholds -->
-            <div class="card" style="margin-bottom: 1.5rem;">
-                <h3 class="card-title">Clinical Vitals Threshold Configuration</h3>
-                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">
-                    Readings beyond these bounds trigger automated Warning or Emergency states on the live dashboard.
-                </p>
+            <!-- SECTION B: Emergency Alerts -->
+            <section class="card" style="margin-bottom: 1.5rem;" aria-labelledby="section-alerts-title">
+                <div class="card-title" id="section-alerts-title" style="color: var(--accent-cyan); font-size: 1.05rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; margin-bottom: 1.2rem;">
+                    <span>🚨 Emergency Alerts (Gmail SMTP Backend)</span>
+                </div>
+
+                <!-- Enable/Disable Switch -->
+                <div class="switch-container">
+                    <div class="switch-label">
+                        <span class="switch-title">Caregiver Emergency Notifications</span>
+                        <span class="switch-subtitle">Automatically send real-time SOS & GPS alerts when critical vitals or falls are detected</span>
+                    </div>
+                    <label class="toggle-switch" for="cfg-alerts-enabled">
+                        <input type="checkbox" id="cfg-alerts-enabled" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <!-- Backend Alert API URL -->
+                <div class="form-group" style="margin-top: 0.85rem;">
+                    <label for="cfg-backend-url">
+                        <span>Backend Alert API URL</span>
+                        <span class="label-desc">(Vercel serverless alert endpoint)</span>
+                    </label>
+                    <input type="url" id="cfg-backend-url" class="form-input" placeholder="https://alpha-squared-iooot.vercel.app/api/send-email-alert" autocomplete="off">
+                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        🔒 Gmail credentials remain secure on Vercel environment variables. This URL dispatches alerts without exposing SMTP passwords.
+                    </div>
+                </div>
+
+                <!-- Test Alert Button & Feedback -->
+                <div style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center; margin-top: 1.25rem; flex-wrap: wrap;">
+                    <button type="button" id="btn-test-alert" onclick="testNotificationAlert()" class="btn btn-secondary" style="font-size: 0.88rem;">
+                        🧪 Test Emergency Alert
+                    </button>
+                </div>
+                <div id="alert-feedback" class="feedback-msg" role="status" aria-live="polite"></div>
+            </section>
+
+            <!-- SECTION C: Health Alert Thresholds -->
+            <section class="card" style="margin-bottom: 2rem;" aria-labelledby="section-thresholds-title">
+                <div class="card-title" id="section-thresholds-title" style="color: var(--accent-cyan); font-size: 1.05rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; margin-bottom: 1.2rem;">
+                    <span>🩺 Health Alert Thresholds</span>
+                </div>
 
                 <div class="form-grid">
+                    <!-- Heart Rate Min -->
                     <div class="form-group">
-                        <label>Heart Rate Critical Min (BPM)</label>
-                        <input type="number" id="cfg-hr-min" value="50" class="form-input" required>
+                        <label for="cfg-hr-min">
+                            <span>Heart Rate Min (BPM)</span>
+                        </label>
+                        <input type="number" id="cfg-hr-min" class="form-input" min="30" max="220" step="1" placeholder="50" required>
                     </div>
+
+                    <!-- Heart Rate Max -->
                     <div class="form-group">
-                        <label>Heart Rate Critical Max (BPM)</label>
-                        <input type="number" id="cfg-hr-max" value="120" class="form-input" required>
-                    </div>
-                    <div class="form-group">
-                        <label>SpO2 Critical Minimum (%)</label>
-                        <input type="number" id="cfg-spo2-critical" value="91" class="form-input" required>
+                        <label for="cfg-hr-max">
+                            <span>Heart Rate Max (BPM)</span>
+                        </label>
+                        <input type="number" id="cfg-hr-max" class="form-input" min="40" max="240" step="1" placeholder="120" required>
                     </div>
                 </div>
 
-                <div class="form-grid" style="margin-top:0.5rem;">
+                <div class="form-grid" style="margin-top: 0.5rem;">
+                    <!-- Body Temp Min -->
                     <div class="form-group">
-                        <label>Body Temp Critical Min (°C)</label>
-                        <input type="number" step="0.1" id="cfg-temp-min" value="35.5" class="form-input" required>
+                        <label for="cfg-temp-min">
+                            <span>Body Temp Min (°C)</span>
+                        </label>
+                        <input type="number" id="cfg-temp-min" class="form-input" min="30.0" max="42.0" step="0.1" placeholder="35.5" required>
                     </div>
+
+                    <!-- Body Temp Max -->
                     <div class="form-group">
-                        <label>Body Temp Critical Max (°C)</label>
-                        <input type="number" step="0.1" id="cfg-temp-max" value="38.5" class="form-input" required>
+                        <label for="cfg-temp-max">
+                            <span>Body Temp Max (°C)</span>
+                        </label>
+                        <input type="number" id="cfg-temp-max" class="form-input" min="34.0" max="45.0" step="0.1" placeholder="38.5" required>
                     </div>
                 </div>
-            </div>
 
-            <div style="display:flex; justify-content:flex-end; gap:1rem;">
-                <button type="submit" class="btn btn-primary" style="padding:0.8rem 2rem;">
-                    💾 Save Configuration
+                <!-- SpO2 Minimum (Active MAX30102 sensor) -->
+                <div id="group-spo2" class="form-group" style="margin-top: 0.5rem; max-width: 320px;">
+                    <label for="cfg-spo2-critical">
+                        <span>Blood Oxygen Min (SpO2 %)</span>
+                        <span class="label-desc">(MAX30102 sensor)</span>
+                    </label>
+                    <input type="number" id="cfg-spo2-critical" class="form-input" min="70" max="100" step="1" placeholder="91" required>
+                </div>
+
+                <!-- Informational Disclaimer Note -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-top: 1rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                    ℹ️ <strong>Medical Disclaimer:</strong> Threshold alerts are strictly informational for automated remote caregiver notification and do not constitute a clinical medical diagnosis.
+                </div>
+            </section>
+
+            <!-- Bottom Primary Action Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <div id="global-save-feedback" class="feedback-msg" role="status" aria-live="polite" style="margin-top: 0; flex: 1;"></div>
+                <button type="submit" id="btn-save-all" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 0.95rem; margin-left: auto;">
+                    💾 Save Changes
                 </button>
             </div>
 
@@ -139,89 +222,260 @@
 
     </main>
 
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Alpha Squared IoT Health & Emergency Detection System &copy; 2026</p>
+    </footer>
+
     <!-- JS Scripts -->
     <script src="js/sensors.js"></script>
     <script src="js/alerts.js"></script>
     <script src="js/location.js"></script>
     <script>
+        const DEFAULT_API_BASE = "https://alpha-squared-iooot.vercel.app";
+        const DEFAULT_ALERT_URL = "https://alpha-squared-iooot.vercel.app/api/send-email-alert";
+        const DEMO_DEVICE_ID = "ALPHA-001";
+        const DEMO_DEVICE_NAME = "Alpha Squared Health Monitor Node 1";
+
         document.addEventListener("DOMContentLoaded", () => {
+            loadSavedSettings();
+        });
+
+        /**
+         * Load all settings from localStorage and populate inputs cleanly without selected text
+         */
+        function loadSavedSettings() {
+            // 1. Device Configuration
+            const devCfg = JSON.parse(localStorage.getItem("alpha_device_config") || "{}");
+            const selectEl = document.getElementById("cfg-device-select");
+            
+            const deviceId = devCfg.deviceId || DEMO_DEVICE_ID;
+            const deviceName = devCfg.deviceName || DEMO_DEVICE_NAME;
+            const apiBase = devCfg.apiBaseUrl || DEFAULT_API_BASE;
+
+            if (deviceId === DEMO_DEVICE_ID) {
+                selectEl.value = DEMO_DEVICE_ID;
+            } else {
+                selectEl.value = "NEW_DEVICE";
+            }
+
+            document.getElementById("cfg-device-id").value = deviceId;
+            document.getElementById("cfg-device-name").value = deviceName;
+            document.getElementById("cfg-api-base-url").value = apiBase;
+            // Never expose secret device tokens from storage or logs; load only if explicitly set
+            document.getElementById("cfg-device-token").value = devCfg.deviceToken || "";
+
+            // 2. Alert Configuration
+            const alertCfg = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
+            const alertsEnabled = typeof alertCfg.enabled === "boolean" ? alertCfg.enabled : true;
+            document.getElementById("cfg-alerts-enabled").checked = alertsEnabled;
+            document.getElementById("cfg-backend-url").value = alertCfg.backendUrl || DEFAULT_ALERT_URL;
+
+            // 3. Health Thresholds
             const thresholds = getHealthThresholds();
             document.getElementById("cfg-hr-min").value = thresholds.hrMin || 50;
             document.getElementById("cfg-hr-max").value = thresholds.hrMax || 120;
-            document.getElementById("cfg-spo2-critical").value = thresholds.spo2Critical || 91;
             document.getElementById("cfg-temp-min").value = thresholds.tempMin || 35.5;
             document.getElementById("cfg-temp-max").value = thresholds.tempMax || 38.5;
-
-            // Load API Config (secrets are NEVER stored in localStorage)
-            const apiCfg = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
-            const DEFAULT_BACKEND_URL = "https://alpha-squared-iooot.vercel.app/api/send-email-alert";
-            document.getElementById("cfg-backend-url").value = apiCfg.backendUrl || DEFAULT_BACKEND_URL;
-            document.getElementById("cfg-webhook-url").value = apiCfg.webhookUrl || "";
-        });
-
-        function saveSystemSettings(event) {
-            event.preventDefault();
-
-            const newThresholds = {
-                hrMin: parseInt(document.getElementById("cfg-hr-min").value),
-                hrMax: parseInt(document.getElementById("cfg-hr-max").value),
-                hrWarnLow: 60,
-                hrWarnHigh: 100,
-                spo2Critical: parseInt(document.getElementById("cfg-spo2-critical").value),
-                spo2Warning: 94,
-                tempMin: parseFloat(document.getElementById("cfg-temp-min").value),
-                tempMax: parseFloat(document.getElementById("cfg-temp-max").value),
-                tempWarnLow: 36.0,
-                tempWarnHigh: 37.6
-            };
-            saveHealthThresholds(newThresholds);
-
-            let enteredBackendUrl = document.getElementById("cfg-backend-url").value.trim();
-            // Auto-append /api/send-email-alert if user enters just the Vercel domain
-            if (enteredBackendUrl.startsWith("http") && !enteredBackendUrl.includes("/api/")) {
-                enteredBackendUrl = enteredBackendUrl.replace(/\/+$/, "") + "/api/send-email-alert";
-                document.getElementById("cfg-backend-url").value = enteredBackendUrl;
-            }
-
-            // Save public API URLs
-            const apiConfig = {
-                backendUrl: enteredBackendUrl || "https://alpha-squared-iooot.vercel.app/api/send-email-alert",
-                webhookUrl: document.getElementById("cfg-webhook-url").value.trim()
-            };
-            localStorage.setItem("alpha_alert_api_config", JSON.stringify(apiConfig));
-
-            alert("✅ Configuration settings & Alert API endpoint saved successfully!");
+            document.getElementById("cfg-spo2-critical").value = thresholds.spo2Critical || 91;
         }
 
         /**
-         * Sends a test emergency notification with device GPS via the backend API.
-         * Never touches email credentials in the browser.
+         * Handle Device Dropdown Change
          */
-        async function testNotificationAlert() {
-            const statusEl = document.getElementById("test-alert-status");
-            const btn      = document.getElementById("btn-test-alert");
+        function onDeviceSelectChange() {
+            const selectEl = document.getElementById("cfg-device-select");
+            if (selectEl.value === DEMO_DEVICE_ID) {
+                document.getElementById("cfg-device-id").value = DEMO_DEVICE_ID;
+                document.getElementById("cfg-device-name").value = DEMO_DEVICE_NAME;
+            } else {
+                document.getElementById("cfg-device-id").value = "";
+                document.getElementById("cfg-device-name").value = "";
+                document.getElementById("cfg-device-id").focus();
+            }
+        }
 
-            let backendUrl = document.getElementById("cfg-backend-url").value.trim();
-            const DEFAULT_BACKEND_URL = "https://alpha-squared-iooot.vercel.app/api/send-email-alert";
+        /**
+         * Toggle Password Mask on Device Token Input
+         */
+        function toggleTokenMask() {
+            const input = document.getElementById("cfg-device-token");
+            const btn = document.getElementById("btn-toggle-token-mask");
+            if (input.type === "password") {
+                input.type = "text";
+                btn.textContent = "🙈 Hide";
+            } else {
+                input.type = "password";
+                btn.textContent = "👁️ Show";
+            }
+        }
 
-            // If empty or relative, default to active Vercel serverless endpoint
-            if (!backendUrl || backendUrl.startsWith("/") || backendUrl.includes("your-project")) {
-                backendUrl = DEFAULT_BACKEND_URL;
-                document.getElementById("cfg-backend-url").value = backendUrl;
-            } else if (backendUrl.startsWith("http") && !backendUrl.includes("/api/")) {
-                backendUrl = backendUrl.replace(/\/+$/, "") + "/api/send-email-alert";
-                document.getElementById("cfg-backend-url").value = backendUrl;
+        /**
+         * Show feedback message banner in a section
+         */
+        function showFeedback(elId, type, text) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            el.className = "feedback-msg show " + type;
+            el.textContent = text;
+        }
+
+        /**
+         * Validate form threshold bounds
+         */
+        function validateThresholdInputs() {
+            const hrMin = parseInt(document.getElementById("cfg-hr-min").value, 10);
+            const hrMax = parseInt(document.getElementById("cfg-hr-max").value, 10);
+            const tempMin = parseFloat(document.getElementById("cfg-temp-min").value);
+            const tempMax = parseFloat(document.getElementById("cfg-temp-max").value);
+            const spo2Min = parseInt(document.getElementById("cfg-spo2-critical").value, 10);
+
+            if (isNaN(hrMin) || isNaN(hrMax) || hrMin <= 0 || hrMax <= 0) {
+                return { valid: false, error: "Heart rate thresholds must be valid positive numbers." };
+            }
+            if (hrMin >= hrMax) {
+                return { valid: false, error: "Heart Rate Min (" + hrMin + " BPM) must be less than Heart Rate Max (" + hrMax + " BPM)." };
             }
 
+            if (isNaN(tempMin) || isNaN(tempMax)) {
+                return { valid: false, error: "Temperature thresholds must be valid numbers." };
+            }
+            if (tempMin >= tempMax) {
+                return { valid: false, error: "Body Temp Min (" + tempMin + " °C) must be less than Body Temp Max (" + tempMax + " °C)." };
+            }
+
+            if (isNaN(spo2Min) || spo2Min < 50 || spo2Min > 100) {
+                return { valid: false, error: "SpO2 threshold must be a percentage between 50% and 100%." };
+            }
+
+            return {
+                valid: true,
+                thresholds: {
+                    hrMin,
+                    hrMax,
+                    hrWarnLow: Math.max(hrMin + 5, 60),
+                    hrWarnHigh: Math.min(hrMax - 10, 100),
+                    tempMin,
+                    tempMax,
+                    tempWarnLow: 36.0,
+                    tempWarnHigh: 37.6,
+                    spo2Critical: spo2Min,
+                    spo2Warning: Math.min(spo2Min + 3, 95)
+                }
+            };
+        }
+
+        /**
+         * Save Device Configuration Section independently
+         */
+        function saveDeviceSection() {
+            const devId = document.getElementById("cfg-device-id").value.trim();
+            const devName = document.getElementById("cfg-device-name").value.trim();
+            let apiBase = document.getElementById("cfg-api-base-url").value.trim();
+            const devToken = document.getElementById("cfg-device-token").value.trim();
+
+            if (!devId) {
+                showFeedback("device-feedback", "error", "Device ID is required.");
+                return;
+            }
+
+            if (!apiBase) {
+                apiBase = DEFAULT_API_BASE;
+                document.getElementById("cfg-api-base-url").value = apiBase;
+            } else {
+                apiBase = apiBase.replace(/\/+$/, "");
+            }
+
+            const devCfg = {
+                deviceId: devId,
+                deviceName: devName || ("Device " + devId),
+                apiBaseUrl: apiBase,
+                deviceToken: devToken
+            };
+
+            localStorage.setItem("alpha_device_config", JSON.stringify(devCfg));
+            showFeedback("device-feedback", "success", "✓ Device & API settings saved successfully.");
+        }
+
+        /**
+         * Save All Settings Handler (Main Form Submit)
+         */
+        function saveAllSettings(event) {
+            if (event) event.preventDefault();
+
+            // 1. Validate Thresholds
+            const val = validateThresholdInputs();
+            if (!val.valid) {
+                showFeedback("global-save-feedback", "error", "⚠️ " + val.error);
+                return;
+            }
+
+            // 2. Save Thresholds
+            saveHealthThresholds(val.thresholds);
+
+            // 3. Save Device Config
+            saveDeviceSection();
+
+            // 4. Save Alert Config
+            let alertUrl = document.getElementById("cfg-backend-url").value.trim();
+            if (!alertUrl) {
+                alertUrl = DEFAULT_ALERT_URL;
+                document.getElementById("cfg-backend-url").value = alertUrl;
+            }
+
+            const alertConfig = {
+                enabled: document.getElementById("cfg-alerts-enabled").checked,
+                backendUrl: alertUrl
+            };
+            localStorage.setItem("alpha_alert_api_config", JSON.stringify(alertConfig));
+
+            showFeedback("global-save-feedback", "success", "✅ All settings saved successfully.");
+        }
+
+        /**
+         * Test API Connection to backend health endpoint
+         */
+        async function testApiConnection() {
+            const btn = document.getElementById("btn-test-api");
+            let baseUrl = document.getElementById("cfg-api-base-url").value.trim() || DEFAULT_API_BASE;
+            baseUrl = baseUrl.replace(/\/+$/, "");
+            const healthUrl = baseUrl + "/api/iot/health";
+
             btn.disabled = true;
-            statusEl.style.color = "var(--accent-cyan)";
-            statusEl.textContent = "📍 Acquiring GPS & sending test alert...";
+            showFeedback("device-feedback", "info", "Testing API connection to " + healthUrl + "...");
+
+            try {
+                const response = await fetch(healthUrl, { method: "GET" });
+                const data = await response.json().catch(() => null);
+
+                if (response.ok && data && (data.status === "operational" || data.service)) {
+                    const dbMsg = data.database ? (" (" + data.database.provider + ")") : "";
+                    showFeedback("device-feedback", "success", "✅ API connection successful: " + data.service + dbMsg);
+                } else {
+                    showFeedback("device-feedback", "error", "❌ API connection failed with HTTP status " + response.status);
+                }
+            } catch (err) {
+                showFeedback("device-feedback", "error", "❌ API connection failed: " + err.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        /**
+         * Test Emergency Notification Alert via existing working endpoint
+         */
+        async function testNotificationAlert() {
+            const btn = document.getElementById("btn-test-alert");
+            let backendUrl = document.getElementById("cfg-backend-url").value.trim() || DEFAULT_ALERT_URL;
+
+            btn.disabled = true;
+            showFeedback("alert-feedback", "info", "📍 Acquiring GPS & sending test alert to backend...");
 
             try {
                 // Fetch GPS coordinates for the test
                 const locResult = await getCurrentPatientLocation({ timeout: 5000 });
 
-                statusEl.textContent = "⏳ Sending test email alert via backend...";
+                showFeedback("alert-feedback", "info", "⏳ Sending test email alert via backend...");
 
                 const response = await fetch(backendUrl, {
                     method: "POST",
@@ -229,8 +483,8 @@
                     body: JSON.stringify({
                         source: "settings_test_button",
                         type: "TEST EMERGENCY NOTIFICATION",
-                        patientName: document.getElementById("cfg-patient-name").value || "Eleanor Vance",
-                        patientId: "ESP32_ALPHA_01",
+                        patientName: document.getElementById("cfg-device-name").value || "Test Patient",
+                        patientId: document.getElementById("cfg-device-id").value || "ALPHA-001",
                         vitals: { heartRate: 75, spo2: 98, temperature: 36.6 },
                         location: locResult,
                         timestamp: new Date().toLocaleString()
@@ -241,20 +495,16 @@
                 try {
                     data = await response.json();
                 } catch {
-                    throw new Error("Invalid response from backend (not JSON). Check URL.");
+                    throw new Error("Invalid non-JSON response from backend. Check API URL.");
                 }
 
                 if (response.ok && data.success) {
-                    statusEl.style.color = "#10b981";
-                    statusEl.textContent = "✅ Test alert sent successfully! Check caregiver inbox.";
+                    showFeedback("alert-feedback", "success", "✅ Test alert delivered successfully! Check caregiver inbox.");
                 } else {
-                    statusEl.style.color = "#ef4444";
-                    statusEl.textContent = "❌ " + (data.message || "Backend reported an error.");
+                    showFeedback("alert-feedback", "error", "❌ " + (data.message || "Backend reported an error."));
                 }
             } catch (err) {
-                statusEl.style.color = "#ef4444";
-                statusEl.textContent = "❌ Network error: " + err.message;
-                console.error("[TestAlert] Fetch error:", err);
+                showFeedback("alert-feedback", "error", "❌ Network error: " + err.message);
             } finally {
                 btn.disabled = false;
             }

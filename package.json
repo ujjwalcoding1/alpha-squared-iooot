@@ -8,10 +8,12 @@
   },
   "dependencies": {
     "dotenv": "^18.0.5",
+    "mongodb": "^7.7.0",
     "nodemailer": "^10.0.13"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test-backend-migration.js",
+    "db:init": "node backend/database/mongo-init.js"
   },
   "repository": {
     "type": "git",

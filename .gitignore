@@ -6,7 +6,10 @@
 .idea/
 
 # Environment and Secrets
+.env
+.env.*
 *.env
+!.env.example
 hardware/esp32/wifi_secrets.h
 
 # OS generated files

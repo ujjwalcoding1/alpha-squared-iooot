@@ -10,6 +10,9 @@
 #define SDA_PIN 21
 #define SCL_PIN 22
 
+// OneWire Pin for DS18B20 Temperature Sensor
+#define ONE_WIRE_BUS 18
+
 // System Intervals (in milliseconds)
 #define SENSOR_READ_INTERVAL 2000
 #define HEARTBEAT_INTERVAL 5000

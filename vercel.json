@@ -2,15 +2,69 @@
   "version": 2,
   "name": "alpha-squared-backend",
   "functions": {
+    "api/send-email-alert.js": {
+      "memory": 256,
+      "maxDuration": 15
+    },
     "api/send-telegram-alert.js": {
       "memory": 128,
       "maxDuration": 10
     },
-    "api/send-email-alert.js": {
+    "api/iot/health.js": {
       "memory": 128,
       "maxDuration": 10
+    },
+    "api/iot/data.js": {
+      "memory": 256,
+      "maxDuration": 15
+    },
+    "api/iot/devices.js": {
+      "memory": 128,
+      "maxDuration": 10
+    },
+    "api/iot/device-reading.js": {
+      "memory": 256,
+      "maxDuration": 15
     }
   },
+  "rewrites": [
+    {
+      "source": "/api/iot/health",
+      "destination": "/api/iot/health"
+    },
+    {
+      "source": "/api/iot/data",
+      "destination": "/api/iot/data"
+    },
+    {
+      "source": "/api/iot/devices/:id/rotate-token",
+      "destination": "/api/iot/devices?id=:id&action=rotate-token"
+    },
+    {
+      "source": "/api/iot/devices/:id",
+      "destination": "/api/iot/devices?id=:id"
+    },
+    {
+      "source": "/api/iot/devices",
+      "destination": "/api/iot/devices"
+    },
+    {
+      "source": "/api/iot/device/:id/latest",
+      "destination": "/api/iot/device-reading?id=:id&view=latest"
+    },
+    {
+      "source": "/api/iot/device/:id/history",
+      "destination": "/api/iot/device-reading?id=:id&view=history"
+    },
+    {
+      "source": "/api/iot/device/:id/status",
+      "destination": "/api/iot/device-reading?id=:id&view=status"
+    },
+    {
+      "source": "/api/iot/device/:id/location-history",
+      "destination": "/api/iot/device-reading?id=:id&view=location-history"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

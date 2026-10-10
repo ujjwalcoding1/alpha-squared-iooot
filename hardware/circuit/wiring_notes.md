@@ -12,6 +12,9 @@
 | | GND | GND | Black |
 | | SDA | GPIO 21 (Shared I2C Bus) | Blue |
 | | SCL | GPIO 22 (Shared I2C Bus) | Yellow |
+| **DS18B20 (Temperature)** | VDD | 3.3V | Red |
+| | GND | GND | Black |
+| | DQ (Data) | GPIO 18 (4.7kΩ pull-up to 3.3V) | Yellow |
 | **SOS Button** | Pin 1 | GPIO 4 | Green |
 | | Pin 2 | GND | Black |
 | **Buzzer** | (+) Positive | GPIO 23 | Orange |

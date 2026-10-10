@@ -34,10 +34,11 @@ function initDashboard() {
             setDemoModeState(newDemoState);
             updateModeBadgeUI();
             if (newDemoState) {
+                stopLiveStream();
                 startDemoSimulationStream();
             } else {
                 stopDemoSimulationStream();
-                connectFirebaseRealtimeStream();
+                startLiveStream();
             }
         });
     }
@@ -133,8 +134,101 @@ function initDashboard() {
     if (getSystemMode() === "DEMO MODE") {
         startDemoSimulationStream();
     } else {
+        startLiveStream();
+    }
+}
+
+let apiPollInterval = null;
+
+function stopRestApiStream() {
+    if (apiPollInterval) {
+        clearInterval(apiPollInterval);
+        apiPollInterval = null;
+    }
+}
+
+function startLiveStream() {
+    stopDemoSimulationStream();
+    connectRestApiStream();
+    if (typeof getDatabase === "function" && getDatabase()) {
         connectFirebaseRealtimeStream();
     }
+}
+
+function stopLiveStream() {
+    stopRestApiStream();
+}
+
+/**
+ * Polls MongoDB Atlas backend via /api/iot/device/:id/latest
+ */
+function connectRestApiStream() {
+    stopRestApiStream();
+
+    let devCfg = {};
+    try {
+        devCfg = JSON.parse(localStorage.getItem("alpha_device_config") || "{}");
+    } catch (_) {}
+
+    const deviceId = (devCfg.deviceId || "ALPHA-001").trim();
+    let apiBase = (devCfg.apiBaseUrl || "").trim().replace(/\/+$/, "");
+
+    if (!apiBase) {
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+            apiBase = window.location.origin;
+        } else {
+            apiBase = "https://alpha-squared-iooot.vercel.app";
+        }
+    }
+
+    const latestUrl = `${apiBase}/api/iot/device/${encodeURIComponent(deviceId)}/latest`;
+    console.log(`[Dashboard] Connecting to MongoDB REST stream: ${latestUrl}`);
+
+    async function pollLatestReading() {
+        if (getSystemMode() === "DEMO MODE") return;
+
+        try {
+            const res = await fetch(latestUrl, { method: "GET" });
+            if (!res.ok) {
+                if (res.status === 404) {
+                    updateDeviceStatusUI({ online: false });
+                }
+                return;
+            }
+            const data = await res.json();
+            if (data && data.success && data.has_data && data.reading) {
+                const r = data.reading;
+
+                if (r.heart_rate && typeof r.heart_rate.value === "number") {
+                    currentVitalsState.heartRate = r.heart_rate.value;
+                }
+                if (r.temperature && typeof r.temperature.value === "number") {
+                    currentVitalsState.temperature = r.temperature.value;
+                }
+                if (r.gps && r.gps.fix_valid && typeof r.gps.latitude === "number") {
+                    currentVitalsState.latitude = r.gps.latitude;
+                    currentVitalsState.longitude = r.gps.longitude;
+                }
+                if (r.timestamp || r.server_received_at) {
+                    currentVitalsState.timestamp = new Date(r.server_received_at || r.timestamp).getTime();
+                }
+
+                updateDashboardUI(currentVitalsState);
+
+                // Device connectivity check
+                const lastSeenMs = new Date(r.server_received_at || r.timestamp).getTime();
+                const isOnline = (Date.now() - lastSeenMs) < 60000;
+                updateDeviceStatusUI({ online: isOnline, lastSeen: lastSeenMs });
+            } else if (data && data.success && !data.has_data) {
+                updateDeviceStatusUI({ online: false, message: "No data recorded yet" });
+            }
+        } catch (err) {
+            console.debug("[Dashboard] REST API polling standby:", err.message);
+        }
+    }
+
+    pollLatestReading();
+    apiPollInterval = setInterval(pollLatestReading, 3000);
 }
 
 function updateModeBadgeUI() {

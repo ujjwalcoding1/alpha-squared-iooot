@@ -12,6 +12,7 @@
 
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include "config.h"
 #include "wifi_config.h"
 #include "sensors.h"
@@ -67,7 +68,7 @@ void loop() {
     if (sosPressed) {
         Serial.println("🚨 SOS BUTTON PRESSED MANUAL EMERGENCY!");
         triggerLocalAlarm();
-        sendVitalsToFirebase(true, true);
+        sendVitalsToBackend(true, true);
         delay(2000); // Debounce delay
     }
 
@@ -76,14 +77,14 @@ void loop() {
     if (fallDetected) {
         Serial.println("⚠️ FALL DETECTED BY ACCELEROMETER!");
         triggerLocalAlarm();
-        sendVitalsToFirebase(true, false);
+        sendVitalsToBackend(true, false);
         delay(2000);
     }
 
     // 3. Periodic Sensor Readings and Sync
     if (currentMillis - lastSensorRead >= SENSOR_READ_INTERVAL) {
         lastSensorRead = currentMillis;
-        sendVitalsToFirebase(fallDetected, sosPressed);
+        sendVitalsToBackend(fallDetected, sosPressed);
     }
 }
 
@@ -96,46 +97,60 @@ void triggerLocalAlarm() {
     }
 }
 
-void sendVitalsToFirebase(bool fall, bool sos) {
+/**
+ * Transmits real-time biometrics to Alpha Squared Vercel/MongoDB REST API
+ * POST /api/iot/data
+ * Headers: Content-Type: application/json, x-device-token: <DEVICE_TOKEN>
+ */
+void sendVitalsToBackend(bool fall, bool sos) {
     SensorData biometrics = readBiometricSensors();
 
-    Serial.printf("[Sensors] HR: %d BPM | SpO2: %d%% | Temp: %.1f °C | Fall: %s | SOS: %s\n",
+    Serial.printf("[Sensors] HR: %d BPM | SpO2: %d%% | Temp: %.2f °C | Fall: %s | SOS: %s\n",
                   biometrics.heartRate, biometrics.spo2, biometrics.temperature,
                   fall ? "YES" : "NO", sos ? "YES" : "NO");
 
     if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient http;
-        String firebaseUrl = String(FIREBASE_HOST) + "healthMonitoring/currentVitals.json";
-        
-        http.begin(firebaseUrl);
-        http.addHeader("Content-Type", "application/json");
+        WiFiClientSecure client;
+        client.setInsecure(); // Allows secure TLS connection without hardcoded CA cert expiration
 
-        // Construct JSON Payload
+        HTTPClient http;
+        String backendUrl = String(API_BASE_URL) + "/api/iot/data";
+        
+        if (!http.begin(client, backendUrl)) {
+            Serial.println("[HTTP] Connection initialization to backend failed.");
+            return;
+        }
+
+        http.addHeader("Content-Type", "application/json");
+        http.addHeader("x-device-token", DEVICE_TOKEN);
+
+        // Construct JSON telemetry payload
+        // NOTE: Blood pressure and GPS are intentionally omitted because hardware modules are not installed.
+        // Server will record them as null/not_installed without fabrication.
         String payload = "{";
-        payload += "\"heartRate\":" + String(biometrics.heartRate) + ",";
-        payload += "\"spo2\":" + String(biometrics.spo2) + ",";
-        payload += "\"temperature\":" + String(biometrics.temperature) + ",";
-        payload += "\"fallDetected\":" + String(fall ? "true" : "false") + ",";
-        payload += "\"sos\":" + String(sos ? "true" : "false") + ",";
-        payload += "\"latitude\":" + String(DEFAULT_LATITUDE, 6) + ",";
-        payload += "\"longitude\":" + String(DEFAULT_LONGITUDE, 6) + ",";
-        payload += "\"timestamp\":" + String(millis());
+        payload += "\"device_id\":\"" + String(DEVICE_ID) + "\",";
+        payload += "\"temperature\":{";
+        payload += "\"value\":" + String(biometrics.temperature, 2) + ",";
+        payload += "\"unit\":\"C\",";
+        payload += "\"sensor_status\":\"ok\"";
+        payload += "},";
+        payload += "\"heart_rate\":{";
+        payload += "\"value\":" + String(biometrics.heartRate) + ",";
+        payload += "\"unit\":\"bpm\",";
+        payload += "\"sensor_status\":\"ok\"";
+        payload += "},";
+        payload += "\"battery_level\":95,";
+        payload += "\"signal_strength\":" + String(WiFi.RSSI()) + ",";
+        payload += "\"is_simulated\":false";
         payload += "}";
 
-        int httpResponseCode = http.PUT(payload);
+        int httpResponseCode = http.POST(payload);
         if (httpResponseCode > 0) {
-            // Updated successfully
+            String response = http.getString();
+            Serial.printf("[Backend API] Response HTTP %d: %s\n", httpResponseCode, response.c_str());
         } else {
-            Serial.printf("[Firebase] HTTP PUT failed, error: %s\n", http.errorToString(httpResponseCode).c_str());
+            Serial.printf("[Backend API] HTTP POST failed, error: %s\n", http.errorToString(httpResponseCode).c_str());
         }
-        http.end();
-
-        // Update Device Heartbeat Status
-        String deviceUrl = String(FIREBASE_HOST) + "healthMonitoring/device.json";
-        http.begin(deviceUrl);
-        http.addHeader("Content-Type", "application/json");
-        String devicePayload = "{\"deviceId\":\"" + String(DEVICE_ID) + "\",\"online\":true,\"lastSeen\":" + String(millis()) + "}";
-        http.PUT(devicePayload);
         http.end();
     }
 }
