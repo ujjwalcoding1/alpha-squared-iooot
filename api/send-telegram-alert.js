@@ -40,10 +40,10 @@ module.exports = async function handler(req, res) {
 
   // ── Read secrets from environment (NEVER from request body / client) ──
   const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-  const CHAT_ID   = process.env.TELEGRAM_CAREGIVER_CHAT_ID;
+  const CHAT_ID   = process.env.TELEGRAM_CAREGIVER_CHAT_ID || process.env.TELEGRAM_CHAT_ID;
 
   if (!BOT_TOKEN || !CHAT_ID) {
-    console.error("[Telegram] Missing environment variables: TELEGRAM_BOT_TOKEN or TELEGRAM_CAREGIVER_CHAT_ID");
+    console.error("[Telegram] Missing environment variables: TELEGRAM_BOT_TOKEN or TELEGRAM_CAREGIVER_CHAT_ID / TELEGRAM_CHAT_ID");
     return res.status(500).json({
       success: false,
       message: "Server configuration error. Telegram credentials are not configured."

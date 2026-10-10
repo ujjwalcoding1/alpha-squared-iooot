@@ -1,28 +1,36 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Pin Definitions
+// =========================================================================
+// Alpha Squared IoT - ESP32 Firmware Pinout & Hardware Configuration
+// =========================================================================
+
+// 1. Digital Output Pins
 #define BUZZER_PIN 23
 #define LED_STATUS_PIN 2
-#define SOS_BUTTON_PIN 4
 
-// I2C Pins for MPU6050 & MAX30102
+// 2. SOS Push Button Input Pin (GPIO 32 - Safe Input with Internal Pull-Up, Active LOW)
+#define SOS_BUTTON_PIN 32
+
+// 3. I2C Bus Pins (MAX30102 Heart Rate Sensor & MPU6050 Accelerometer)
 #define SDA_PIN 21
 #define SCL_PIN 22
 
-// OneWire Pin for DS18B20 Temperature Sensor
-#define ONE_WIRE_BUS 18
+// 4. OneWire Data Pin (DS18B20 Digital Temperature Sensor)
+#define DS18B20_PIN 4
 
-// System Intervals (in milliseconds)
-#define SENSOR_READ_INTERVAL 2000
-#define HEARTBEAT_INTERVAL 5000
+// 5. NEO-6M GPS Module HardwareSerial2 Pins (Baud: 9600)
+#define GPS_RX_PIN 16
+#define GPS_TX_PIN 17
 
-// Fall Detection Constants
-#define ACCEL_THRESHOLD_HIGH 2.8   // High G impact threshold (~2.8g)
-#define ACCEL_THRESHOLD_LOW 0.4    // Free-fall threshold (~0.4g)
-#define GYRO_ANGLE_THRESHOLD 45.0  // Orientation tilt change threshold in degrees
+// 6. SIM800L GSM Module HardwareSerial1 Pins (Baud: 9600)
+#define GSM_RX_PIN 26
+#define GSM_TX_PIN 27
 
-// Device Identity
-#define DEVICE_ID "ESP32_ALPHA_01"
+// 7. System Intervals & Debounce Constants (in milliseconds)
+#define SENSOR_READ_INTERVAL 10000     // 10-second telemetry reporting interval
+#define EMERGENCY_COOLDOWN_MS 30000    // 30-second cooldown between emergency triggers
+#define DEBOUNCE_DELAY_MS 50           // 50ms software debounce for push button
+#define VOICE_CALL_DURATION_MS 20000   // 20-second max duration for automated emergency voice call
 
 #endif // CONFIG_H

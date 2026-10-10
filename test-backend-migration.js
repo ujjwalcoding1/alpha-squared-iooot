@@ -128,9 +128,15 @@ function createMongoMockDb() {
             return {
                 sort(sortCriteria) {
                     if (sortCriteria && sortCriteria.server_received_at === -1) {
-                        filtered.sort((a, b) => new Date(b.server_received_at) - new Date(a.server_received_at));
+                        filtered.sort((a, b) => {
+                            const diff = new Date(b.server_received_at) - new Date(a.server_received_at);
+                            return diff !== 0 ? diff : readings.indexOf(b) - readings.indexOf(a);
+                        });
                     } else if (sortCriteria && sortCriteria.server_received_at === 1) {
-                        filtered.sort((a, b) => new Date(a.server_received_at) - new Date(b.server_received_at));
+                        filtered.sort((a, b) => {
+                            const diff = new Date(a.server_received_at) - new Date(b.server_received_at);
+                            return diff !== 0 ? diff : readings.indexOf(a) - readings.indexOf(b);
+                        });
                     }
                     return this;
                 },
@@ -542,6 +548,73 @@ async function runTests() {
     }, resDelete);
     record('Delete device returns 200', resDelete.statusCode === 200);
     record('Device removed from MongoDB', !mockDb.devices.has(newDevId));
+
+    // ------------------------------------------------------------------------
+    // TEST 8: Firmware Contract Verification (Disconnected Sensors & SIM800L)
+    // ------------------------------------------------------------------------
+    console.log('\nTest 8: Telemetry with Disconnected Sensors & SIM800L Status');
+    const resDisPayload = createMockRes();
+    await dataHandler({
+        method: 'POST',
+        url: '/api/iot/data',
+        headers: { 'x-device-token': testToken },
+        body: {
+            device_id: testDeviceId,
+            timestamp: new Date().toISOString(),
+            temperature: { sensor_status: 'disconnected' },
+            heart_rate: { sensor_status: 'disconnected' },
+            gps: { sensor_status: 'no_fix' },
+            sim800l: { status: 'ready', last_sms_status: 'submitted' }
+        }
+    }, resDisPayload);
+    record('Telemetry payload with disconnected sensors accepted with 201', resDisPayload.statusCode === 201);
+    const lastStored = mockDb.readings[mockDb.readings.length - 1];
+    record('Disconnected heart rate stored value is strictly null (not 0 BPM)', lastStored.heart_rate.value === null);
+    record('Disconnected temperature stored value is strictly null', lastStored.temperature.value === null);
+    record('No-fix GPS fix_valid is strictly false', lastStored.gps.fix_valid === false);
+    record('SIM800L status saved as "ready"', lastStored.sim800l.status === 'ready');
+    record('SIM800L last_sms_status saved as "submitted"', lastStored.sim800l.last_sms_status === 'submitted');
+
+    // ------------------------------------------------------------------------
+    // TEST 9: Physical SOS Button & Cellular Voice Call Telemetry
+    // ------------------------------------------------------------------------
+    console.log('\nTest 9: Physical SOS Button & Outgoing Voice Call Status Ingestion');
+    await new Promise(r => setTimeout(r, 20));
+    const resSosCallPayload = createMockRes();
+    await dataHandler({
+        method: 'POST',
+        url: '/api/iot/data',
+        headers: { 'x-device-token': testToken },
+        body: {
+            device_id: testDeviceId,
+            timestamp: new Date().toISOString(),
+            temperature: { value: 36.6, unit: 'C', sensor_status: 'ok' },
+            heart_rate: { value: 78, unit: 'bpm', sensor_status: 'ok' },
+            gps: { latitude: 28.6139, longitude: 77.2090, fix_valid: true, sensor_status: 'ok' },
+            sim800l: {
+                status: 'ready',
+                last_sms_status: 'submitted',
+                last_call_status: 'dialing',
+                last_sos_time: '120s_uptime'
+            }
+        }
+    }, resSosCallPayload);
+    record('SOS call telemetry payload accepted with 201 Created', resSosCallPayload.statusCode === 201);
+    const sosStored = mockDb.readings[mockDb.readings.length - 1];
+    record('SIM800L last_call_status saved as "dialing"', sosStored.sim800l.last_call_status === 'dialing');
+    record('SIM800L last_sos_time saved correctly', sosStored.sim800l.last_sos_time === '120s_uptime');
+
+    // Verify GET /api/iot/device/:id/status returns last_sms_event with call status
+    const resStatusWithCall = createMockRes();
+    await readingHandler({
+        method: 'GET',
+        url: `/api/iot/device/${testDeviceId}/status`,
+        query: { id: testDeviceId, view: 'status' },
+        headers: {}
+    }, resStatusWithCall);
+    record('Status endpoint returns 200 with voice call status', resStatusWithCall.statusCode === 200);
+    record('Status endpoint returns sim800l sensor status "ready"', resStatusWithCall.body.sensors.sim800l === 'ready');
+    record('Status endpoint reports last_sms_event with call status "dialing"', resStatusWithCall.body.last_sms_event.call_status === 'dialing');
 
     console.log('\n================================================================');
     console.log(`TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);

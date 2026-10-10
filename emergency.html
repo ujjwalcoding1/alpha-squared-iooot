@@ -186,7 +186,7 @@
                 }
             }
 
-            updatePatientLocation(latest.latitude || 28.6139, latest.longitude || 77.2090);
+            updatePatientLocation(latest.latitude, latest.longitude, hasGps);
 
             // Resolve button
             document.getElementById("btn-resolve-emergency").onclick = () => {

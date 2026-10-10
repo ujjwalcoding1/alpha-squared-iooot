@@ -1,21 +1,19 @@
 /**
  * Alpha Squared IoT - Device Authentication & Security Engine
- * Cryptographic token generation, SHA-256 hashing, and admin verification with MongoDB
+ * Cryptographic token generation, SHA-256 hashing, and admin verification without MongoDB.
  */
 
 const crypto = require('crypto');
-const db = require('./db');
+const liveStore = require('./live-store');
 
 const DEFAULT_DEV_ADMIN_KEY = 'alpha_admin_master_secret_2026';
 
 function hashToken(token) {
-    if (!token || typeof token !== 'string') return '';
-    return crypto.createHash('sha256').update(token.trim()).digest('hex');
+    return liveStore.hashToken(token);
 }
 
 function generateDeviceToken(deviceId = 'DEV') {
-    const randomBytes = crypto.randomBytes(24).toString('hex');
-    return `alphadev_${deviceId.toLowerCase().replace(/[^a-z0-9]/g, '')}_${randomBytes}`;
+    return liveStore.generateDeviceToken(deviceId);
 }
 
 function getHeader(req, name) {
@@ -81,7 +79,7 @@ function verifyAdminAuth(req) {
 }
 
 /**
- * Authenticates telemetry data submissions from IoT hardware against MongoDB 'devices' collection
+ * Authenticates telemetry data submissions from IoT hardware against device registry
  */
 async function authenticateDevice(req, claimedDeviceId) {
     if (!claimedDeviceId || typeof claimedDeviceId !== 'string') {
@@ -112,51 +110,40 @@ async function authenticateDevice(req, claimedDeviceId) {
     }
 
     const tokenHash = hashToken(token);
+    const device = await liveStore.getDevice(claimedDeviceId);
 
-    try {
-        const devicesCol = await db.getDevicesCollection();
-        const device = await devicesCol.findOne({ device_id: claimedDeviceId.trim() });
-
-        if (!device) {
-            return {
-                authenticated: false,
-                statusCode: 404,
-                error: `Device '${claimedDeviceId}' is not registered.`
-            };
-        }
-
-        if (!device.is_enabled) {
-            return {
-                authenticated: false,
-                statusCode: 403,
-                error: `Device '${claimedDeviceId}' is disabled. Telemetry ingestion blocked.`
-            };
-        }
-
-        // Secure token hash verification
-        const expectedHashBuf = Buffer.from(device.token_hash);
-        const actualHashBuf = Buffer.from(tokenHash);
-
-        if (expectedHashBuf.length !== actualHashBuf.length || !crypto.timingSafeEqual(expectedHashBuf, actualHashBuf)) {
-            return {
-                authenticated: false,
-                statusCode: 401,
-                error: 'Invalid device credentials. Authentication rejected.'
-            };
-        }
-
-        return {
-            authenticated: true,
-            device
-        };
-    } catch (err) {
-        console.error('[Auth Error]:', err.message);
+    if (!device) {
         return {
             authenticated: false,
-            statusCode: 500,
-            error: `Database authentication error: ${err.message}`
+            statusCode: 404,
+            error: `Device '${claimedDeviceId}' is not registered.`
         };
     }
+
+    if (!device.is_enabled) {
+        return {
+            authenticated: false,
+            statusCode: 403,
+            error: `Device '${claimedDeviceId}' is disabled. Telemetry ingestion blocked.`
+        };
+    }
+
+    // Secure token hash verification
+    const expectedHashBuf = Buffer.from(device.token_hash);
+    const actualHashBuf = Buffer.from(tokenHash);
+
+    if (expectedHashBuf.length !== actualHashBuf.length || !crypto.timingSafeEqual(expectedHashBuf, actualHashBuf)) {
+        return {
+            authenticated: false,
+            statusCode: 401,
+            error: 'Invalid device credentials. Authentication rejected.'
+        };
+    }
+
+    return {
+        authenticated: true,
+        device
+    };
 }
 
 module.exports = {

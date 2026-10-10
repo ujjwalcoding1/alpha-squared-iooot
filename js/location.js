@@ -10,9 +10,7 @@
 
 let leafletMap = null;
 let patientMarker = null;
-
-// Fallback Default Coordinates (New Delhi, India demo coordinates)
-const DEFAULT_COORDS = { lat: 28.6139, lng: 77.2090 };
+let lastKnownValidCoords = null;
 
 /**
  * Initializes the Leaflet interactive map inside the specified DOM container
@@ -22,55 +20,99 @@ function initLeafletMap(containerId = "map-container") {
     if (!mapElement) return;
 
     if (typeof L === 'undefined') {
-        console.warn("[Location] Leaflet.js library not loaded. Map fallback text will be shown.");
-        mapElement.innerHTML = `<div style="padding:2rem; text-align:center; color:#94a3b8;">
-            Map service initializing... (Latitude: ${DEFAULT_COORDS.lat}, Longitude: ${DEFAULT_COORDS.lng})
+        console.warn("[Location] Leaflet.js library not loaded.");
+        mapElement.innerHTML = `<div style="padding:2rem; text-align:center; color:#94a3b8; background:rgba(15,23,42,0.6); border-radius:8px;">
+            Leaflet map library loading...
         </div>`;
         return;
     }
 
     try {
         if (!leafletMap) {
-            leafletMap = L.map(containerId).setView([DEFAULT_COORDS.lat, DEFAULT_COORDS.lng], 15);
+            // Default initial center set to generic region view, zoom level 3
+            leafletMap = L.map(containerId).setView([20.0, 0.0], 2);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '© OpenStreetMap contributors'
             }).addTo(leafletMap);
-
-            patientMarker = L.marker([DEFAULT_COORDS.lat, DEFAULT_COORDS.lng]).addTo(leafletMap)
-                .bindPopup("<b>Patient Current Location</b><br>Device Node: ESP32_ALPHA_01")
-                .openPopup();
         }
     } catch (e) {
-        console.error("[Location] Error creating map:", e);
+        console.error("[Location] Error initializing Leaflet map:", e);
     }
 }
 
 /**
- * Updates coordinates on the UI and repositions the Leaflet map marker
+ * Updates coordinates on the UI and repositions the Leaflet map marker honestly
+ * @param {number|null} lat 
+ * @param {number|null} lng 
+ * @param {boolean} fixValid 
+ * @param {string|null} lastFixTime 
  */
-function updatePatientLocation(lat, lng) {
-    const validLat = (lat !== undefined && lat !== null && !isNaN(lat)) ? parseFloat(lat) : DEFAULT_COORDS.lat;
-    const validLng = (lng !== undefined && lng !== null && !isNaN(lng)) ? parseFloat(lng) : DEFAULT_COORDS.lng;
-
+function updatePatientLocation(lat, lng, fixValid = false, lastFixTime = null) {
     const latSpan = document.getElementById("location-lat");
     const lngSpan = document.getElementById("location-lng");
-    
-    if (latSpan) latSpan.textContent = validLat.toFixed(4);
-    if (lngSpan) lngSpan.textContent = validLng.toFixed(4);
-
-    if (leafletMap && patientMarker) {
-        const newLatLng = [validLat, validLng];
-        patientMarker.setLatLng(newLatLng);
-        leafletMap.panTo(newLatLng);
-    }
-
+    const gpsStatusSpan = document.getElementById("gps-fix-status-text");
     const mapBtn = document.getElementById("btn-open-google-maps");
-    if (mapBtn) {
-        mapBtn.onclick = () => {
-            window.open(`https://www.google.com/maps?q=${validLat},${validLng}`, '_blank');
-        };
+
+    const hasValidCoords = fixValid && (typeof lat === 'number' && !isNaN(lat)) && (typeof lng === 'number' && !isNaN(lng));
+
+    if (hasValidCoords) {
+        lastKnownValidCoords = { lat: parseFloat(lat.toFixed(7)), lng: parseFloat(lng.toFixed(7)), time: lastFixTime || new Date().toISOString() };
+
+        if (latSpan) latSpan.textContent = lastKnownValidCoords.lat.toFixed(5);
+        if (lngSpan) lngSpan.textContent = lastKnownValidCoords.lng.toFixed(5);
+        if (gpsStatusSpan) {
+            gpsStatusSpan.className = "vital-status-pill normal";
+            gpsStatusSpan.textContent = "GPS FIX ACQUIRED";
+        }
+
+        if (mapBtn) {
+            mapBtn.disabled = false;
+            mapBtn.style.opacity = "1";
+            mapBtn.title = "Open Google Maps location";
+            mapBtn.onclick = () => {
+                window.open(`https://www.google.com/maps?q=${lastKnownValidCoords.lat},${lastKnownValidCoords.lng}`, '_blank');
+            };
+        }
+
+        if (leafletMap) {
+            const newLatLng = [lastKnownValidCoords.lat, lastKnownValidCoords.lng];
+            if (!patientMarker) {
+                patientMarker = L.marker(newLatLng).addTo(leafletMap)
+                    .bindPopup(`<b>Patient GPS Fix</b><br>Device: ALPHA-001<br>Lat: ${lastKnownValidCoords.lat}<br>Lng: ${lastKnownValidCoords.lng}`)
+                    .openPopup();
+            } else {
+                patientMarker.setLatLng(newLatLng);
+                patientMarker.getPopup().setContent(`<b>Patient GPS Fix</b><br>Device: ALPHA-001<br>Lat: ${lastKnownValidCoords.lat}<br>Lng: ${lastKnownValidCoords.lng}`);
+            }
+            leafletMap.setView(newLatLng, 15);
+        }
+    } else {
+        // No current GPS fix
+        if (latSpan) latSpan.textContent = lastKnownValidCoords ? `${lastKnownValidCoords.lat.toFixed(5)} (Last Known)` : "Unavailable";
+        if (lngSpan) lngSpan.textContent = lastKnownValidCoords ? `${lastKnownValidCoords.lng.toFixed(5)} (Last Known)` : "Unavailable";
+
+        if (gpsStatusSpan) {
+            gpsStatusSpan.className = "vital-status-pill critical";
+            gpsStatusSpan.textContent = lastKnownValidCoords ? "GPS FIX STALE / UNAVAILABLE" : "GPS FIX UNAVAILABLE";
+        }
+
+        if (mapBtn) {
+            if (lastKnownValidCoords) {
+                mapBtn.disabled = false;
+                mapBtn.style.opacity = "0.8";
+                mapBtn.title = "Open last known GPS location on Google Maps";
+                mapBtn.onclick = () => {
+                    window.open(`https://www.google.com/maps?q=${lastKnownValidCoords.lat},${lastKnownValidCoords.lng}`, '_blank');
+                };
+            } else {
+                mapBtn.disabled = true;
+                mapBtn.style.opacity = "0.5";
+                mapBtn.title = "GPS fix unavailable";
+                mapBtn.onclick = null;
+            }
+        }
     }
 }
 

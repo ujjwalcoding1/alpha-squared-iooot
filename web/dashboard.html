@@ -203,6 +203,40 @@
                     </div>
                 </div>
 
+                <!-- Hardware Device & Sensor Status Section -->
+                <div class="card">
+                    <h3 class="card-title">Device & Sensor Health Status</h3>
+                    <div class="patient-info-list">
+                        <div class="patient-info-item">
+                            <span class="label">Device ID:</span>
+                            <span class="val" style="font-family:monospace; font-weight:700;">ALPHA-001</span>
+                        </div>
+                        <div class="patient-info-item">
+                            <span class="label">API / Wi-Fi Stream:</span>
+                            <span id="status-api-connection" class="vital-status-pill normal">CONNECTED</span>
+                        </div>
+                        <div class="patient-info-item">
+                            <span class="label">DS18B20 Temp Sensor:</span>
+                            <span id="status-sensor-ds18b20" class="vital-status-pill normal">ONLINE</span>
+                        </div>
+                        <div class="patient-info-item">
+                            <span class="label">MAX30102 Heart Rate:</span>
+                            <span id="status-sensor-max30102" class="vital-status-pill normal">ONLINE</span>
+                        </div>
+                        <div class="patient-info-item">
+                            <span class="label">NEO-6M GPS Status:</span>
+                            <span id="status-sensor-gps" class="vital-status-pill normal">FIX ACQUIRED</span>
+                        </div>
+                        <div class="patient-info-item">
+                            <span class="label">SIM800L Cellular SMS:</span>
+                            <span id="status-sensor-sim800l" class="vital-status-pill">UNKNOWN</span>
+                        </div>
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.75rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.5rem; line-height:1.3;">
+                        ℹ️ <i>Notice: All readings are device telemetry measurements, not medical diagnoses.</i>
+                    </div>
+                </div>
+
                 <!-- Hackathon Quick Demo Triggers -->
                 <div class="card" style="border: 1px dashed var(--accent-cyan);">
                     <h4 style="font-size:0.9rem; color:var(--accent-cyan); margin-bottom:0.5rem;">⚡ Hackathon Demo Controls</h4>

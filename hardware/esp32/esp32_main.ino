@@ -1,13 +1,20 @@
 /*
  * Alpha Squared - ESP32 IoT Smart Health & Emergency Detection System
- * Main Sketch
+ * Main Sketch with Physical SOS Push Button & Automatic Cellular Voice Call
  * 
  * Hardware Connections:
- * - MAX30102 Heart Rate & SpO2 -> I2C (SDA 21, SCL 22)
- * - MPU6050 Accelerometer/Gyro  -> I2C (SDA 21, SCL 22)
- * - SOS Button                  -> Pin 4 (Pull-up)
- * - Buzzer                      -> Pin 23
- * - Status LED                  -> Pin 2
+ * - SOS Push Button               -> GPIO 32 (Active LOW, Internal Pull-up)
+ * - MAX30102 Heart Rate          -> I2C (SDA 21, SCL 22)
+ * - DS18B20 Temperature           -> OneWire GPIO 4 (with 4.7k resistor)
+ * - NEO-6M GPS Module             -> HardwareSerial2 (RX 16, TX 17)
+ * - SIM800L Cellular GSM Module   -> HardwareSerial1 (RX 26, TX 27)
+ * - MPU6050 Accelerometer/Gyro    -> I2C (SDA 21, SCL 22)
+ * - Buzzer                        -> GPIO 23
+ * - Status LED                    -> GPIO 2
+ * 
+ * Serial Monitor Commands:
+ * - Enter 'E' or 'e': Trigger manual Emergency SMS & Voice Call Test.
+ * - Enter 'H' or 'h': End/hang up active voice call (ATH).
  */
 
 #include <WiFi.h>
@@ -19,19 +26,17 @@
 #include "fall_detection.h"
 
 unsigned long lastSensorRead = 0;
-unsigned long lastHeartbeat = 0;
 
 void setup() {
     Serial.begin(115200);
     delay(500);
 
-    Serial.println("==========================================");
-    Serial.println(" ALPHA SQUARED - IoT EMERGENCY DETECTION  ");
-    Serial.println("==========================================");
+    Serial.println("=================================================");
+    Serial.println(" ALPHA SQUARED - IoT SOS & HEALTH MONITORING    ");
+    Serial.println("=================================================");
 
     pinMode(BUZZER_PIN, OUTPUT);
     pinMode(LED_STATUS_PIN, OUTPUT);
-    pinMode(SOS_BUTTON_PIN, INPUT_PULLUP);
 
     initSensors();
     initFallDetection();
@@ -55,36 +60,8 @@ void setup() {
         Serial.println(WiFi.localIP());
         digitalWrite(LED_STATUS_PIN, HIGH);
     } else {
-        Serial.println("\n[Wi-Fi] Connection failed! Running in local standalone mode.");
+        Serial.println("\n[Wi-Fi] Wi-Fi connection standby. Local standalone / Cellular SMS mode active.");
         digitalWrite(LED_STATUS_PIN, LOW);
-    }
-}
-
-void loop() {
-    unsigned long currentMillis = millis();
-
-    // 1. Check SOS Button Press (Active LOW)
-    bool sosPressed = (digitalRead(SOS_BUTTON_PIN) == LOW);
-    if (sosPressed) {
-        Serial.println("🚨 SOS BUTTON PRESSED MANUAL EMERGENCY!");
-        triggerLocalAlarm();
-        sendVitalsToBackend(true, true);
-        delay(2000); // Debounce delay
-    }
-
-    // 2. Check Fall Detection IMU
-    bool fallDetected = checkFallDetected();
-    if (fallDetected) {
-        Serial.println("⚠️ FALL DETECTED BY ACCELEROMETER!");
-        triggerLocalAlarm();
-        sendVitalsToBackend(true, false);
-        delay(2000);
-    }
-
-    // 3. Periodic Sensor Readings and Sync
-    if (currentMillis - lastSensorRead >= SENSOR_READ_INTERVAL) {
-        lastSensorRead = currentMillis;
-        sendVitalsToBackend(fallDetected, sosPressed);
     }
 }
 
@@ -97,21 +74,21 @@ void triggerLocalAlarm() {
     }
 }
 
-/**
- * Transmits real-time biometrics to Alpha Squared Vercel/MongoDB REST API
- * POST /api/iot/data
- * Headers: Content-Type: application/json, x-device-token: <DEVICE_TOKEN>
- */
 void sendVitalsToBackend(bool fall, bool sos) {
     SensorData biometrics = readBiometricSensors();
 
-    Serial.printf("[Sensors] HR: %d BPM | SpO2: %d%% | Temp: %.2f °C | Fall: %s | SOS: %s\n",
-                  biometrics.heartRate, biometrics.spo2, biometrics.temperature,
-                  fall ? "YES" : "NO", sos ? "YES" : "NO");
+    Serial.printf("[Sensors] HR: %s (%s) | Temp: %s (%s) | GPS: %s | GSM: %s | Call: %s\n",
+                  biometrics.hrValid ? String(biometrics.heartRate).c_str() : "N/A",
+                  biometrics.hrStatus.c_str(),
+                  biometrics.tempValid ? String(biometrics.temperature, 2).c_str() : "N/A",
+                  biometrics.tempStatus.c_str(),
+                  biometrics.gpsStatus.c_str(),
+                  biometrics.gsmStatus.c_str(),
+                  biometrics.lastCallStatus.c_str());
 
     if (WiFi.status() == WL_CONNECTED) {
         WiFiClientSecure client;
-        client.setInsecure(); // Allows secure TLS connection without hardcoded CA cert expiration
+        client.setInsecure(); // Allows secure TLS connection without CA cert expiration issues
 
         HTTPClient http;
         String backendUrl = String(API_BASE_URL) + "/api/iot/data";
@@ -124,23 +101,48 @@ void sendVitalsToBackend(bool fall, bool sos) {
         http.addHeader("Content-Type", "application/json");
         http.addHeader("x-device-token", DEVICE_TOKEN);
 
-        // Construct JSON telemetry payload
-        // NOTE: Blood pressure and GPS are intentionally omitted because hardware modules are not installed.
-        // Server will record them as null/not_installed without fabrication.
+        // Construct JSON telemetry payload compatible with Vercel API
         String payload = "{";
         payload += "\"device_id\":\"" + String(DEVICE_ID) + "\",";
+        
+        // Temperature object
         payload += "\"temperature\":{";
-        payload += "\"value\":" + String(biometrics.temperature, 2) + ",";
-        payload += "\"unit\":\"C\",";
-        payload += "\"sensor_status\":\"ok\"";
+        payload += "\"sensor_status\":\"" + biometrics.tempStatus + "\"";
+        if (biometrics.tempValid) {
+            payload += ",\"value\":" + String(biometrics.temperature, 2);
+            payload += ",\"unit\":\"C\"";
+        }
         payload += "},";
+
+        // Heart Rate object
         payload += "\"heart_rate\":{";
-        payload += "\"value\":" + String(biometrics.heartRate) + ",";
-        payload += "\"unit\":\"bpm\",";
-        payload += "\"sensor_status\":\"ok\"";
+        payload += "\"sensor_status\":\"" + biometrics.hrStatus + "\"";
+        if (biometrics.hrValid) {
+            payload += ",\"value\":" + String(biometrics.heartRate);
+            payload += ",\"unit\":\"bpm\"";
+        }
         payload += "},";
-        payload += "\"battery_level\":95,";
-        payload += "\"signal_strength\":" + String(WiFi.RSSI()) + ",";
+
+        // GPS object
+        payload += "\"gps\":{";
+        payload += "\"sensor_status\":\"" + biometrics.gpsStatus + "\"";
+        if (biometrics.gpsFixValid) {
+            payload += ",\"latitude\":" + String(biometrics.latitude, 7);
+            payload += ",\"longitude\":" + String(biometrics.longitude, 7);
+            payload += ",\"fix_valid\":true";
+        } else {
+            payload += ",\"fix_valid\":false";
+        }
+        payload += "},";
+
+        // SIM800L status object with call state
+        payload += "\"sim800l\":{";
+        payload += "\"status\":\"" + biometrics.gsmStatus + "\",";
+        payload += "\"last_sms_status\":\"" + biometrics.lastSmsStatus + "\",";
+        payload += "\"last_call_status\":\"" + biometrics.lastCallStatus + "\",";
+        payload += "\"last_sos_time\":\"" + biometrics.lastSosTime + "\"";
+        payload += "},";
+
         payload += "\"is_simulated\":false";
         payload += "}";
 
@@ -152,5 +154,42 @@ void sendVitalsToBackend(bool fall, bool sos) {
             Serial.printf("[Backend API] HTTP POST failed, error: %s\n", http.errorToString(httpResponseCode).c_str());
         }
         http.end();
+    }
+}
+
+void loop() {
+    unsigned long currentMillis = millis();
+    SensorData biometrics = readBiometricSensors();
+
+    // Non-blocking GSM call duration monitor & response parser
+    processGsmTasks();
+
+    // Check Serial Monitor commands (Key 'E' for Emergency Test, 'H' to Hang up)
+    checkSerialCommands(biometrics);
+
+    // 1. Check Physical SOS Push Button Press (GPIO 32, Active LOW with Debounce)
+    bool sosButtonPressed = handleDebouncedButtonPress();
+    if (sosButtonPressed) {
+        Serial.println("\n🚨 PHYSICAL SOS PUSH BUTTON PRESSED!");
+        triggerLocalAlarm();
+        triggerEmergencySMS(EMERGENCY_PHONE_NUMBER, "Physical SOS Button Pressed", biometrics);
+        initiateEmergencyCall(EMERGENCY_PHONE_NUMBER);
+        sendVitalsToBackend(false, true);
+    }
+
+    // 2. Check Fall Detection IMU
+    bool fallDetected = checkFallDetected();
+    if (fallDetected) {
+        Serial.println("\n⚠️ FALL DETECTED BY ACCELEROMETER!");
+        triggerLocalAlarm();
+        triggerEmergencySMS(EMERGENCY_PHONE_NUMBER, "Fall Impact Detected", biometrics);
+        initiateEmergencyCall(EMERGENCY_PHONE_NUMBER);
+        sendVitalsToBackend(true, false);
+    }
+
+    // 3. Periodic Telemetry Ingestion (Every 10 Seconds)
+    if (currentMillis - lastSensorRead >= SENSOR_READ_INTERVAL) {
+        lastSensorRead = currentMillis;
+        sendVitalsToBackend(fallDetected, sosButtonPressed);
     }
 }

@@ -54,7 +54,8 @@ function validateTelemetryPayload(body) {
         temperature: { value: null, unit: 'C', sensor_status: 'disconnected' },
         heart_rate: { value: null, unit: 'bpm', sensor_status: 'disconnected' },
         blood_pressure: { systolic: null, diastolic: null, unit: 'mmHg', sensor_status: 'not_installed' },
-        gps: { latitude: null, longitude: null, fix_valid: false },
+        gps: { latitude: null, longitude: null, fix_valid: false, sensor_status: 'no_fix' },
+        sim800l: { status: 'unknown', last_sms_status: null, last_sms_at: null },
         battery_level: null,
         signal_strength: null,
         is_simulated: body.is_simulated === true
@@ -63,7 +64,7 @@ function validateTelemetryPayload(body) {
     // 3. Temperature validation
     if (body.temperature && typeof body.temperature === 'object') {
         const t = body.temperature;
-        const status = (t.sensor_status || 'ok').toLowerCase();
+        const status = (t.sensor_status || (typeof t.value === 'number' ? 'ok' : 'disconnected')).toLowerCase();
         clean.temperature.sensor_status = status;
 
         if (status === 'ok') {
@@ -86,7 +87,7 @@ function validateTelemetryPayload(body) {
     // 4. Heart Rate validation
     if (body.heart_rate && typeof body.heart_rate === 'object') {
         const hr = body.heart_rate;
-        const status = (hr.sensor_status || 'ok').toLowerCase();
+        const status = (hr.sensor_status || (typeof hr.value === 'number' ? 'ok' : 'disconnected')).toLowerCase();
         clean.heart_rate.sensor_status = status;
 
         if (status === 'ok') {
@@ -137,31 +138,52 @@ function validateTelemetryPayload(body) {
     // 6. GPS validation
     if (body.gps && typeof body.gps === 'object') {
         const g = body.gps;
-        clean.gps.fix_valid = Boolean(g.fix_valid);
+        const status = (g.sensor_status || (g.fix_valid ? 'ok' : 'no_fix')).toLowerCase();
 
-        if (clean.gps.fix_valid) {
-            if (typeof g.latitude !== 'number' || typeof g.longitude !== 'number') {
-                return { valid: false, error: 'GPS fix_valid is true but numeric latitude and longitude are missing.' };
-            }
+        if (typeof g.latitude === 'number' && !isNaN(g.latitude) && typeof g.longitude === 'number' && !isNaN(g.longitude)) {
             if (g.latitude < -90 || g.latitude > 90) {
                 return { valid: false, error: 'GPS latitude must be between -90 and 90.' };
             }
             if (g.longitude < -180 || g.longitude > 180) {
                 return { valid: false, error: 'GPS longitude must be between -180 and 180.' };
             }
+            clean.gps.fix_valid = true;
+            clean.gps.sensor_status = status === 'no_fix' ? 'ok' : status;
             clean.gps.latitude = parseFloat(g.latitude.toFixed(7));
             clean.gps.longitude = parseFloat(g.longitude.toFixed(7));
+        } else {
+            clean.gps.fix_valid = false;
+            clean.gps.sensor_status = status;
+            clean.gps.latitude = null;
+            clean.gps.longitude = null;
         }
     }
 
-    // 7. Battery & Signal metadata
+    // 7. SIM800L Cellular GSM Status
+    if (body.sim800l && typeof body.sim800l === 'object') {
+        const s = body.sim800l;
+        clean.sim800l.status = (s.status || 'unknown').toLowerCase();
+        if (typeof s.last_sms_status === 'string') {
+            clean.sim800l.last_sms_status = s.last_sms_status.substring(0, 64);
+        }
+        if (typeof s.last_sms_at === 'string') {
+            clean.sim800l.last_sms_at = s.last_sms_at;
+        }
+        if (typeof s.last_call_status === 'string') {
+            clean.sim800l.last_call_status = s.last_call_status.substring(0, 64);
+        }
+        if (typeof s.last_sos_time === 'string') {
+            clean.sim800l.last_sos_time = s.last_sos_time.substring(0, 64);
+        }
+    }
+
+    // 8. Battery & Signal metadata
     if (typeof body.battery_level === 'number' && !isNaN(body.battery_level)) {
         if (body.battery_level >= 0 && body.battery_level <= 100) {
             clean.battery_level = parseFloat(body.battery_level.toFixed(1));
         }
     }
     if (typeof body.signal_strength === 'number' && !isNaN(body.signal_strength)) {
-        // RSSI range typically -120 dBm to 0 dBm
         if (body.signal_strength >= -130 && body.signal_strength <= 10) {
             clean.signal_strength = Math.round(body.signal_strength);
         }

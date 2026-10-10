@@ -1,17 +1,17 @@
 /**
- * Alpha Squared IoT - ESP32 Telemetry Ingestion Endpoint
+ * Alpha Squared IoT - ESP32 Telemetry Ingestion Endpoint (Live Monitoring Mode)
  * POST /api/iot/data
  * 
- * Secure Ingestion:
- * - Authenticates device token against MongoDB 'devices' collection
+ * Secure Live Ingestion:
+ * - Authenticates device token against device registry (Upstash Redis / In-Memory)
  * - Validates physiological ranges and timestamp drift
  * - Preserves absence of missing sensors (e.g. Blood Pressure, GPS) without fabrication
- * - Persists reading directly to MongoDB 'sensor_readings' collection
+ * - Updates latest live reading for real-time dashboard display
  * - Updates device last-seen timestamp and online status
  */
 
 const { applyCors } = require('../../backend/cors');
-const db = require('../../backend/db');
+const liveStore = require('../../backend/live-store');
 const { authenticateDevice } = require('../../backend/auth');
 const { validateTelemetryPayload } = require('../../backend/validation');
 
@@ -65,12 +65,10 @@ module.exports = async function handler(req, res) {
     const data = validation.data;
     const nowIso = new Date().toISOString();
 
-    // 3. Persist Sensor Reading Document to MongoDB
+    // 3. Store Latest Sensor Reading in Live Memory / Upstash Store
     try {
-        const readingsCol = await db.getReadingsCollection();
-        const devicesCol = await db.getDevicesCollection();
-
         const readingDoc = {
+            id: `live_${Date.now()}`,
             device_id: data.device_id,
             device_timestamp: data.device_timestamp,
             server_received_at: nowIso,
@@ -93,7 +91,15 @@ module.exports = async function handler(req, res) {
             gps: {
                 latitude: data.gps.latitude,
                 longitude: data.gps.longitude,
-                fix_valid: data.gps.fix_valid
+                fix_valid: data.gps.fix_valid,
+                sensor_status: data.gps.sensor_status
+            },
+            sim800l: {
+                status: data.sim800l ? data.sim800l.status : 'unknown',
+                last_sms_status: data.sim800l ? data.sim800l.last_sms_status : null,
+                last_sms_at: data.sim800l ? data.sim800l.last_sms_at : null,
+                last_call_status: data.sim800l ? data.sim800l.last_call_status : 'idle',
+                last_sos_time: data.sim800l ? data.sim800l.last_sos_time : null
             },
             battery_level: data.battery_level,
             signal_strength: data.signal_strength,
@@ -101,36 +107,24 @@ module.exports = async function handler(req, res) {
             raw_payload: body
         };
 
-        const insertResult = await readingsCol.insertOne(readingDoc);
-
-        // 4. Update device connectivity & last-seen timestamp
-        await devicesCol.updateOne(
-            { device_id: data.device_id },
-            {
-                $set: {
-                    last_seen_at: nowIso,
-                    status: 'online',
-                    updated_at: nowIso
-                }
-            }
-        );
+        await liveStore.setLatestReading(data.device_id, readingDoc);
 
         return res.status(201).json({
             success: true,
-            message: 'Sensor reading ingested and persisted to MongoDB Atlas.',
-            reading_id: insertResult.insertedId.toString(),
+            message: 'Live sensor reading ingested into store.',
+            reading_id: readingDoc.id,
             server_received_at: nowIso,
             is_simulated: data.is_simulated,
             device_id: data.device_id,
-            storage_mode: 'mongodb-atlas',
-            persistent: true
+            storage_mode: process.env.UPSTASH_REDIS_REST_URL ? 'upstash-redis' : 'live-in-memory',
+            persistent: false
         });
 
     } catch (err) {
         console.error('[Telemetry Ingestion Error]:', err.message);
         return res.status(500).json({
             success: false,
-            error: 'Database storage error while persisting telemetry data.',
+            error: 'Live ingestion error.',
             details: err.message
         });
     }
