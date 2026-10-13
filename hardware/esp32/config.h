@@ -33,4 +33,9 @@
 #define DEBOUNCE_DELAY_MS 50           // 50ms software debounce for push button
 #define VOICE_CALL_DURATION_MS 20000   // 20-second max duration for automated emergency voice call
 
+// 8. Device Identity Guard
+#ifndef DEVICE_ID
+#define DEVICE_ID "ALPHA-001"
+#endif
+
 #endif // CONFIG_H

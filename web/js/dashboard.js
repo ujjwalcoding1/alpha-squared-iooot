@@ -233,7 +233,11 @@ function connectRestApiStream() {
         if (getSystemMode() === "DEMO MODE") return;
 
         try {
-            const res = await fetch(latestUrl, { method: "GET" });
+            let res = await fetch(latestUrl, { method: "GET" });
+            if (!res.ok && res.status === 404) {
+                const fallbackUrl = `${apiBase}/api/iot/data?device_id=${encodeURIComponent(deviceId)}`;
+                res = await fetch(fallbackUrl, { method: "GET" });
+            }
             if (!res.ok) {
                 if (res.status === 404) {
                     updateDeviceStatusUI({ online: false, message: "Device not registered" });
@@ -246,11 +250,19 @@ function connectRestApiStream() {
             if (data && data.success && data.has_data && data.reading) {
                 const r = data.reading;
 
-                currentVitalsState.heartRate = (r.heart_rate && r.heart_rate.status === 'ok' && typeof r.heart_rate.value === 'number') ? r.heart_rate.value : null;
-                currentVitalsState.heartRateStatus = (r.heart_rate && r.heart_rate.status) ? r.heart_rate.status : 'disconnected';
+                currentVitalsState.heartRate = (r.heart_rate && (r.heart_rate.status === 'ok' || !r.heart_rate.status) && typeof r.heart_rate.value === 'number') ? r.heart_rate.value : (typeof r.heart_rate === 'number' ? r.heart_rate : null);
+                currentVitalsState.heartRateStatus = (r.heart_rate && r.heart_rate.status) ? r.heart_rate.status : (currentVitalsState.heartRate ? 'ok' : 'disconnected');
 
-                currentVitalsState.temperature = (r.temperature && r.temperature.status === 'ok' && typeof r.temperature.value === 'number') ? r.temperature.value : null;
-                currentVitalsState.temperatureStatus = (r.temperature && r.temperature.status) ? r.temperature.status : 'disconnected';
+                currentVitalsState.temperature = (r.temperature && (r.temperature.status === 'ok' || !r.temperature.status) && typeof r.temperature.value === 'number') ? r.temperature.value : (typeof r.temperature === 'number' ? r.temperature : null);
+                currentVitalsState.temperatureStatus = (r.temperature && r.temperature.status) ? r.temperature.status : (currentVitalsState.temperature ? 'ok' : 'disconnected');
+
+                if (r.spo2 && typeof r.spo2.value === "number") {
+                    currentVitalsState.spo2 = r.spo2.value;
+                } else if (typeof r.spo2 === "number") {
+                    currentVitalsState.spo2 = r.spo2;
+                } else {
+                    currentVitalsState.spo2 = null;
+                }
 
                 currentVitalsState.gpsFixValid = Boolean(r.gps && r.gps.fix_valid);
                 currentVitalsState.gpsStatus = (r.gps && r.gps.status) ? r.gps.status : (currentVitalsState.gpsFixValid ? 'ok' : 'no_fix');
@@ -258,7 +270,6 @@ function connectRestApiStream() {
                 currentVitalsState.longitude = (r.gps && currentVitalsState.gpsFixValid && typeof r.gps.longitude === 'number') ? r.gps.longitude : null;
 
                 currentVitalsState.sim800lStatus = (r.sim800l && r.sim800l.status) ? r.sim800l.status : 'unknown';
-
                 if (r.timestamp || r.server_received_at) {
                     currentVitalsState.timestamp = new Date(r.server_received_at || r.timestamp).getTime();
                 }

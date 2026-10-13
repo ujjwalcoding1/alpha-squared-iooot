@@ -16,6 +16,7 @@ try {
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const crypto = require('crypto');
+const dbModule = require('../db');
 
 function hashToken(token) {
     return crypto.createHash('sha256').update(token.trim()).digest('hex');
@@ -23,7 +24,7 @@ function hashToken(token) {
 
 async function initMongo() {
     const uri = process.env.MONGODB_URI || process.env.MONGO_URL;
-    const dbName = process.env.MONGODB_DB_NAME || 'alpha_squared_iot';
+    const dbName = dbModule.getDatabaseName();
 
     if (!uri) {
         console.error('Error: MONGODB_URI is not set. Please configure your connection string in .env');

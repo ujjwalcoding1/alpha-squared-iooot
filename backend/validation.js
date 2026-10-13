@@ -1,40 +1,49 @@
 /**
- * Alpha Squared IoT - Telemetry Payload Schema & Range Validation Engine
- * Enforces hardware integrity: no fabricated readings, valid units, physiological boundaries.
+ * Alpha Squared IoT - Telemetry Input Validation & Range Enforcement
+ * Ensures incoming ESP32 sensor readings meet physical and physiological safety constraints.
+ * Strictly preserves missing blood pressure and GPS values as null/not_installed without fabricating data.
  */
 
-function validateIsoTimestamp(timestampStr) {
-    if (!timestampStr) return { valid: false, error: 'Timestamp is required.' };
-    const date = new Date(timestampStr);
-    if (isNaN(date.getTime())) {
-        return { valid: false, error: 'Invalid timestamp format. Must be a valid ISO 8601 string or date.' };
+/**
+ * Validates ISO-8601 timestamp string
+ */
+function validateIsoTimestamp(ts) {
+    if (!ts || typeof ts !== 'string') {
+        return { valid: false, error: 'Timestamp must be an ISO-8601 string.' };
     }
-
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) {
+        return { valid: false, error: 'Timestamp is not a valid date.' };
+    }
+    // Reject timestamps > 24 hours in the future or > 30 days in the past
     const now = Date.now();
-    const timeMs = date.getTime();
-    // Allow max 1 hour clock drift in future, max 7 days in past
-    if (timeMs > now + 3600000) {
-        return { valid: false, error: 'Timestamp cannot be in the future (exceeds clock drift limit).' };
+    const tsMs = d.getTime();
+    if (tsMs > now + 86400000) {
+        return { valid: false, error: 'Timestamp is in the future (> 24h skew).' };
     }
-    if (timeMs < now - 7 * 86400000) {
-        return { valid: false, error: 'Timestamp is too old (exceeds 7-day ingestion window).' };
+    if (tsMs < now - (30 * 86400000)) {
+        return { valid: false, error: 'Timestamp is older than 30 days.' };
     }
-
-    return { valid: true, date };
+    return { valid: true, date: d };
 }
 
+/**
+ * Validates an incoming telemetry payload from ESP32 or simulated nodes.
+ * @param {object} body Raw request body
+ * @returns {object} { valid: boolean, error?: string, data?: object }
+ */
 function validateTelemetryPayload(body) {
-    if (!body || typeof body !== 'object' || Array.isArray(body)) {
-        return { valid: false, error: 'Invalid JSON payload. Object expected.' };
+    if (!body || typeof body !== 'object') {
+        return { valid: false, error: 'Request body must be a valid JSON object.' };
     }
 
-    // 1. Device ID
-    if (!body.device_id || typeof body.device_id !== 'string') {
-        return { valid: false, error: 'Field "device_id" is required and must be a string.' };
+    // 1. Device ID validation
+    const deviceId = (body.device_id || '').trim();
+    if (!deviceId) {
+        return { valid: false, error: 'Field "device_id" is required and cannot be empty.' };
     }
-    const deviceId = body.device_id.trim();
     if (deviceId.length < 3 || deviceId.length > 64 || !/^[A-Za-z0-9_-]+$/.test(deviceId)) {
-        return { valid: false, error: 'Field "device_id" must be 3-64 characters (alphanumeric, underscores, hyphens).' };
+        return { valid: false, error: 'Field "device_id" must be 3-64 characters (alphanumeric, dashes, underscores).' };
     }
 
     // 2. Timestamp (use device timestamp if provided, or fallback to server reception timestamp)
@@ -55,14 +64,23 @@ function validateTelemetryPayload(body) {
         heart_rate: { value: null, unit: 'bpm', sensor_status: 'disconnected' },
         blood_pressure: { systolic: null, diastolic: null, unit: 'mmHg', sensor_status: 'not_installed' },
         gps: { latitude: null, longitude: null, fix_valid: false, sensor_status: 'no_fix' },
-        sim800l: { status: 'unknown', last_sms_status: null, last_sms_at: null },
+        sim800l: { status: 'unknown', last_sms_status: null, last_sms_at: null, last_call_status: 'idle', last_sos_time: null },
+        spo2: null,
         battery_level: null,
         signal_strength: null,
         is_simulated: body.is_simulated === true
     };
 
     // 3. Temperature validation
-    if (body.temperature && typeof body.temperature === 'object') {
+    if (typeof body.temperature === 'number') {
+        const val = body.temperature;
+        if (val < -20 || val > 65) {
+            return { valid: false, error: `Temperature value (${val}°C) is outside reasonable environmental/body bounds (-20 to 65°C).` };
+        }
+        clean.temperature.value = parseFloat(val.toFixed(2));
+        clean.temperature.unit = 'C';
+        clean.temperature.sensor_status = 'ok';
+    } else if (body.temperature && typeof body.temperature === 'object') {
         const t = body.temperature;
         const status = (t.sensor_status || (typeof t.value === 'number' ? 'ok' : 'disconnected')).toLowerCase();
         clean.temperature.sensor_status = status;
@@ -74,8 +92,8 @@ function validateTelemetryPayload(body) {
             if (t.value < -20 || t.value > 65) {
                 return { valid: false, error: `Temperature value (${t.value}°C) is outside reasonable environmental/body bounds (-20 to 65°C).` };
             }
-            if (t.unit && t.unit !== 'C') {
-                return { valid: false, error: 'Temperature unit must be "C".' };
+            if (t.unit && t.unit.toUpperCase() !== 'C') {
+                return { valid: false, error: 'Temperature unit must be Celsius ("C").' };
             }
             clean.temperature.value = parseFloat(t.value.toFixed(2));
             clean.temperature.unit = 'C';
@@ -85,7 +103,15 @@ function validateTelemetryPayload(body) {
     }
 
     // 4. Heart Rate validation
-    if (body.heart_rate && typeof body.heart_rate === 'object') {
+    if (typeof body.heart_rate === 'number') {
+        const val = body.heart_rate;
+        if (val < 20 || val > 250) {
+            return { valid: false, error: `Heart rate value (${val} BPM) is outside physiological bounds (20 to 250 BPM).` };
+        }
+        clean.heart_rate.value = parseFloat(val.toFixed(1));
+        clean.heart_rate.unit = 'bpm';
+        clean.heart_rate.sensor_status = 'ok';
+    } else if (body.heart_rate && typeof body.heart_rate === 'object') {
         const hr = body.heart_rate;
         const status = (hr.sensor_status || (typeof hr.value === 'number' ? 'ok' : 'disconnected')).toLowerCase();
         clean.heart_rate.sensor_status = status;
@@ -107,7 +133,19 @@ function validateTelemetryPayload(body) {
         }
     }
 
-    // 5. Blood Pressure validation (optional hardware module)
+    // 5. SpO2 Blood Oxygen validation
+    if (typeof body.spo2 === 'number' && !isNaN(body.spo2)) {
+        if (body.spo2 >= 50 && body.spo2 <= 100) {
+            clean.spo2 = { value: Math.round(body.spo2), unit: '%', sensor_status: 'ok' };
+        }
+    } else if (body.spo2 && typeof body.spo2 === 'object') {
+        const s = body.spo2;
+        if (typeof s.value === 'number' && s.value >= 50 && s.value <= 100) {
+            clean.spo2 = { value: Math.round(s.value), unit: '%', sensor_status: s.sensor_status || 'ok' };
+        }
+    }
+
+    // 6. Blood Pressure validation (optional hardware module)
     if (body.blood_pressure && typeof body.blood_pressure === 'object') {
         const bp = body.blood_pressure;
         const status = (bp.sensor_status || 'ok').toLowerCase();
@@ -135,8 +173,15 @@ function validateTelemetryPayload(body) {
         }
     }
 
-    // 6. GPS validation
-    if (body.gps && typeof body.gps === 'object') {
+    // 7. GPS validation
+    if (typeof body.latitude === 'number' && typeof body.longitude === 'number' && !isNaN(body.latitude) && !isNaN(body.longitude)) {
+        if (body.latitude >= -90 && body.latitude <= 90 && body.longitude >= -180 && body.longitude <= 180) {
+            clean.gps.latitude = parseFloat(body.latitude.toFixed(7));
+            clean.gps.longitude = parseFloat(body.longitude.toFixed(7));
+            clean.gps.fix_valid = true;
+            clean.gps.sensor_status = 'ok';
+        }
+    } else if (body.gps && typeof body.gps === 'object') {
         const g = body.gps;
         const status = (g.sensor_status || (g.fix_valid ? 'ok' : 'no_fix')).toLowerCase();
 
@@ -159,7 +204,7 @@ function validateTelemetryPayload(body) {
         }
     }
 
-    // 7. SIM800L Cellular GSM Status
+    // 8. SIM800L Cellular GSM Status
     if (body.sim800l && typeof body.sim800l === 'object') {
         const s = body.sim800l;
         clean.sim800l.status = (s.status || 'unknown').toLowerCase();
@@ -177,7 +222,7 @@ function validateTelemetryPayload(body) {
         }
     }
 
-    // 8. Battery & Signal metadata
+    // 9. Battery & Signal metadata
     if (typeof body.battery_level === 'number' && !isNaN(body.battery_level)) {
         if (body.battery_level >= 0 && body.battery_level <= 100) {
             clean.battery_level = parseFloat(body.battery_level.toFixed(1));
@@ -196,4 +241,3 @@ module.exports = {
     validateTelemetryPayload,
     validateIsoTimestamp
 };
-

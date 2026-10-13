@@ -1,11 +1,11 @@
 /**
- * Alpha Squared IoT - Health & Connectivity Verification Endpoint (Live Monitoring Mode)
+ * Alpha Squared IoT - Health & Connectivity Verification Endpoint
  * GET /api/iot/health
- * Public endpoint: returns system status, live telemetry state, and active features without leaking secrets.
+ * Public endpoint: returns system status, database health, and telemetry stats without leaking secrets.
  */
 
 const { applyCors } = require('../../backend/cors');
-const liveStore = require('../../backend/live-store');
+const db = require('../../backend/db');
 
 module.exports = async function handler(req, res) {
     if (applyCors(req, res)) return;
@@ -18,23 +18,20 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        const storeStatus = await liveStore.getStoreStatus();
-        const isHealthy = storeStatus.shared_storage_configured ? storeStatus.connected : true; // Operational locally, degraded without Vercel Redis
+        const dbStatus = await db.getDbStatus();
 
         return res.status(200).json({
-            status: isHealthy ? (storeStatus.shared_storage_configured ? 'operational' : 'standalone_memory') : 'degraded',
-            service: 'Alpha Squared IoT Live Monitoring API',
-            version: '2.2.0-live',
+            status: dbStatus.connected ? 'operational' : 'degraded',
+            service: 'Alpha Squared IoT Health Monitoring API',
+            version: '2.1.0',
             server_time: new Date().toISOString(),
-            mode: 'live-sensor-monitoring',
-            storage: {
-                provider: storeStatus.provider,
-                shared_storage_configured: storeStatus.shared_storage_configured,
-                connected: storeStatus.connected,
-                persistent: false,
-                message: storeStatus.message,
-                registered_devices: storeStatus.devicesCount,
-                active_readings: storeStatus.readingsCount
+            database: {
+                provider: dbStatus.provider,
+                connected: dbStatus.connected,
+                database: dbStatus.database || null,
+                message: dbStatus.message,
+                registered_devices: dbStatus.devicesCount || 0,
+                total_readings: dbStatus.readingsCount || 0
             },
             features: {
                 device_authentication: 'active',

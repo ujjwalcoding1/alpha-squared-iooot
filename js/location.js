@@ -6,6 +6,7 @@
  * - Graceful timeout, permission-denied & error handling
  * - Leaflet.js interactive OpenStreetMap rendering
  * - Google Maps deep-link generator
+ * - Strict non-fabrication of GPS data (displays 'Unavailable' when disconnected)
  */
 
 let leafletMap = null;
@@ -29,7 +30,7 @@ function initLeafletMap(containerId = "map-container") {
 
     try {
         if (!leafletMap) {
-            // Default initial center set to generic region view, zoom level 3
+            // Default initial center set to generic region view, zoom level 2
             leafletMap = L.map(containerId).setView([20.0, 0.0], 2);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -46,19 +47,26 @@ function initLeafletMap(containerId = "map-container") {
  * Updates coordinates on the UI and repositions the Leaflet map marker honestly
  * @param {number|null} lat 
  * @param {number|null} lng 
- * @param {boolean} fixValid 
- * @param {string|null} lastFixTime 
+ * @param {boolean} [fixValid] 
+ * @param {string|null} [lastFixTime] 
  */
-function updatePatientLocation(lat, lng, fixValid = false, lastFixTime = null) {
+function updatePatientLocation(lat, lng, fixValid, lastFixTime = null) {
     const latSpan = document.getElementById("location-lat");
     const lngSpan = document.getElementById("location-lng");
     const gpsStatusSpan = document.getElementById("gps-fix-status-text");
     const mapBtn = document.getElementById("btn-open-google-maps");
 
-    const hasValidCoords = fixValid && (typeof lat === 'number' && !isNaN(lat)) && (typeof lng === 'number' && !isNaN(lng));
+    if (fixValid === undefined) {
+        fixValid = (lat !== undefined && lat !== null && !isNaN(lat)) &&
+                   (lng !== undefined && lng !== null && !isNaN(lng));
+    }
+
+    const hasValidCoords = Boolean(fixValid) &&
+                           (lat !== undefined && lat !== null && !isNaN(lat)) &&
+                           (lng !== undefined && lng !== null && !isNaN(lng));
 
     if (hasValidCoords) {
-        lastKnownValidCoords = { lat: parseFloat(lat.toFixed(7)), lng: parseFloat(lng.toFixed(7)), time: lastFixTime || new Date().toISOString() };
+        lastKnownValidCoords = { lat: parseFloat(Number(lat).toFixed(7)), lng: parseFloat(Number(lng).toFixed(7)), time: lastFixTime || new Date().toISOString() };
 
         if (latSpan) latSpan.textContent = lastKnownValidCoords.lat.toFixed(5);
         if (lngSpan) lngSpan.textContent = lastKnownValidCoords.lng.toFixed(5);
@@ -84,12 +92,14 @@ function updatePatientLocation(lat, lng, fixValid = false, lastFixTime = null) {
                     .openPopup();
             } else {
                 patientMarker.setLatLng(newLatLng);
-                patientMarker.getPopup().setContent(`<b>Patient GPS Fix</b><br>Device: ALPHA-001<br>Lat: ${lastKnownValidCoords.lat}<br>Lng: ${lastKnownValidCoords.lng}`);
+                if (patientMarker.getPopup()) {
+                    patientMarker.getPopup().setContent(`<b>Patient GPS Fix</b><br>Device: ALPHA-001<br>Lat: ${lastKnownValidCoords.lat}<br>Lng: ${lastKnownValidCoords.lng}`);
+                }
             }
             leafletMap.setView(newLatLng, 15);
         }
     } else {
-        // No current GPS fix
+        // No current GPS fix - do NOT fabricate default coordinates
         if (latSpan) latSpan.textContent = lastKnownValidCoords ? `${lastKnownValidCoords.lat.toFixed(5)} (Last Known)` : "Unavailable";
         if (lngSpan) lngSpan.textContent = lastKnownValidCoords ? `${lastKnownValidCoords.lng.toFixed(5)} (Last Known)` : "Unavailable";
 
@@ -107,10 +117,12 @@ function updatePatientLocation(lat, lng, fixValid = false, lastFixTime = null) {
                     window.open(`https://www.google.com/maps?q=${lastKnownValidCoords.lat},${lastKnownValidCoords.lng}`, '_blank');
                 };
             } else {
-                mapBtn.disabled = true;
-                mapBtn.style.opacity = "0.5";
+                mapBtn.disabled = false;
+                mapBtn.style.opacity = "0.6";
                 mapBtn.title = "GPS fix unavailable";
-                mapBtn.onclick = null;
+                mapBtn.onclick = () => {
+                    alert("GPS hardware module is not connected or has no satellite fix. Coordinates are unavailable.");
+                };
             }
         }
     }
@@ -178,7 +190,7 @@ function getCurrentPatientLocation(options = {}) {
                 console.log(`[Location] GPS acquired: Lat ${lat}, Lng ${lng} (Accuracy: ±${Math.round(accuracy)}m)`);
 
                 // Update UI map
-                updatePatientLocation(lat, lng);
+                updatePatientLocation(lat, lng, true);
 
                 resolve({
                     available: true,

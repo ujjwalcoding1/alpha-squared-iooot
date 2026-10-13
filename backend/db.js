@@ -1,41 +1,182 @@
 /**
- * Alpha Squared IoT - Database Compatibility Facade (MongoDB Removed)
- * Legacy compatibility layer reporting live monitoring mode without active MongoDB Atlas connections.
+ * Alpha Squared IoT - MongoDB Atlas Database Connector & Connection Pool
+ * Optimized for Vercel Serverless Functions with connection caching.
  */
 
-const liveStore = require('./live-store');
+const { MongoClient, ServerApiVersion } = require('mongodb');
 
-async function connectToDatabase() {
-    return { client: null, db: null, mode: 'live-store' };
-}
-
-async function getDbStatus() {
-    const status = liveStore.getStoreStatus();
-    return {
-        provider: 'none (live-in-memory)',
-        connected: false,
-        mode: 'live-monitoring-only',
-        persistent: false,
-        message: status.message,
-        devicesCount: status.devicesCount,
-        readingsCount: status.readingsCount
-    };
-}
-
-async function getDevicesCollection() {
-    throw new Error('MongoDB has been removed from this project. Live in-memory store active.');
-}
-
-async function getReadingsCollection() {
-    throw new Error('MongoDB has been removed from this project. Live in-memory store active.');
-}
+let cachedClient = null;
+let cachedDb = null;
+let indexesCreated = false;
 
 function getMongoUri() {
-    return '';
+    return process.env.MONGODB_URI || process.env.MONGO_URL || '';
 }
 
 function getDatabaseName() {
-    return 'none (live-monitoring-mode)';
+    if (process.env.MONGODB_DB_NAME && process.env.MONGODB_DB_NAME.trim()) {
+        return process.env.MONGODB_DB_NAME.trim();
+    }
+    const uri = getMongoUri();
+    if (uri) {
+        try {
+            const url = new URL(uri.replace('mongodb+srv://', 'http://').replace('mongodb://', 'http://'));
+            const dbFromPath = url.pathname ? url.pathname.replace(/^\//, '').split('?')[0].trim() : '';
+            if (dbFromPath) {
+                return dbFromPath;
+            }
+        } catch (_) {}
+    }
+    return 'alpha_squad';
+}
+
+/**
+ * Connect to MongoDB Atlas with connection caching for serverless environments.
+ * If credentials are not configured, throws an explicit configuration error.
+ */
+async function connectToDatabase() {
+    const uri = getMongoUri();
+    if (!uri) {
+        throw new Error('MONGODB_URI environment variable is not configured.');
+    }
+
+    if (cachedClient && cachedDb) {
+        try {
+            // Verify connection is alive
+            await cachedDb.command({ ping: 1 });
+            return { client: cachedClient, db: cachedDb };
+        } catch (_) {
+            cachedClient = null;
+            cachedDb = null;
+        }
+    }
+
+    const client = new MongoClient(uri, {
+        serverApi: {
+            version: ServerApiVersion.v1,
+            strict: true,
+            deprecationErrors: true,
+        },
+        connectTimeoutMS: 8000,
+        socketTimeoutMS: 15000,
+        maxPoolSize: 10
+    });
+
+    await client.connect();
+    const db = client.db(getDatabaseName());
+
+    cachedClient = client;
+    cachedDb = db;
+
+    // Ensure database indexes on initial connection
+    if (!indexesCreated) {
+        try {
+            await ensureIndexes(db);
+            indexesCreated = true;
+        } catch (idxErr) {
+            console.warn('[MongoDB] Index creation warning:', idxErr.message);
+        }
+    }
+
+    return { client: cachedClient, db: cachedDb };
+}
+
+/**
+ * Creates required indexes for devices and sensor_readings collections
+ */
+async function ensureIndexes(db) {
+    const devicesCol = db.collection('devices');
+    const readingsCol = db.collection('sensor_readings');
+
+    await devicesCol.createIndex({ device_id: 1 }, { unique: true });
+    await devicesCol.createIndex({ is_enabled: 1 });
+    await devicesCol.createIndex({ last_seen_at: -1 });
+
+    await readingsCol.createIndex({ device_id: 1, server_received_at: -1 });
+    await readingsCol.createIndex({ server_received_at: -1 });
+    await readingsCol.createIndex({ device_id: 1, is_simulated: 1, server_received_at: -1 });
+
+    // Seed default ALPHA-001 device if not already present
+    const crypto = require('crypto');
+    const demoHash = crypto.createHash('sha256').update('alphadev_demo_secret_token_12345').digest('hex');
+    const nowIso = new Date().toISOString();
+    await devicesCol.updateOne(
+        { device_id: 'ALPHA-001' },
+        {
+            $setOnInsert: {
+                device_id: 'ALPHA-001',
+                device_name: 'Alpha Squad Health Monitor Node 1',
+                device_type: 'ESP32',
+                token_hash: demoHash,
+                is_enabled: true,
+                created_at: nowIso,
+                updated_at: nowIso,
+                last_seen_at: null,
+                status: 'offline',
+                metadata: {}
+            }
+        },
+        { upsert: true }
+    );
+}
+
+/**
+ * Returns the 'devices' collection
+ */
+async function getDevicesCollection() {
+    const { db } = await connectToDatabase();
+    return db.collection('devices');
+}
+
+/**
+ * Returns the 'sensor_readings' collection
+ */
+async function getReadingsCollection() {
+    const { db } = await connectToDatabase();
+    return db.collection('sensor_readings');
+}
+
+/**
+ * Safe status inspection for health check endpoint
+ */
+async function getDbStatus() {
+    const uri = getMongoUri();
+    if (!uri) {
+        return {
+            provider: 'mongodb-atlas',
+            connected: false,
+            database: null,
+            message: 'MONGODB_URI is not configured in environment variables.',
+            devicesCount: 0,
+            readingsCount: 0
+        };
+    }
+
+    try {
+        const { db } = await connectToDatabase();
+        await db.command({ ping: 1 });
+
+        const devicesCount = await db.collection('devices').countDocuments();
+        const readingsCount = await db.collection('sensor_readings').countDocuments();
+
+        return {
+            provider: 'mongodb-atlas',
+            connected: true,
+            database: getDatabaseName(),
+            message: 'MongoDB Atlas connection active and verified.',
+            devicesCount,
+            readingsCount
+        };
+    } catch (err) {
+        return {
+            provider: 'mongodb-atlas',
+            connected: false,
+            database: getDatabaseName(),
+            message: `Connection error: ${err.message}`,
+            devicesCount: 0,
+            readingsCount: 0
+        };
+    }
 }
 
 module.exports = {

@@ -257,7 +257,7 @@ async function runTests() {
     db.getDbStatus = async () => ({
         provider: 'mongodb-atlas',
         connected: true,
-        database: 'alpha_squared_iot',
+        database: 'alpha_squad',
         message: 'MongoDB Atlas connection active and verified.',
         devicesCount: await mockDb.devicesCol.countDocuments(),
         readingsCount: await mockDb.readingsCol.countDocuments()
@@ -466,6 +466,19 @@ async function runTests() {
     record('Location history returns 200', resLoc.statusCode === 200);
     record('Location history contains 1 GPS point (ignoring null)', resLoc.body.count === 1);
     record('Location history latitude is 28.6139', resLoc.body.locations[0].latitude === 28.6139);
+
+    // 6.5 Safe GET endpoint: GET /api/iot/data
+    const resDataGet = createMockRes();
+    await dataHandler({
+        method: 'GET',
+        url: '/api/iot/data',
+        query: { device_id: testDeviceId },
+        headers: {}
+    }, resDataGet);
+    record('Safe GET /api/iot/data endpoint returns 200', resDataGet.statusCode === 200);
+    record('Safe GET /api/iot/data returns has_data: true', resDataGet.body.has_data === true);
+    record('Safe GET /api/iot/data returns latest temperature 37.1', resDataGet.body.reading.temperature.value === 37.1);
+    record('Safe GET /api/iot/data returns latest heart rate 82', resDataGet.body.reading.heart_rate.value === 82);
 
     // ------------------------------------------------------------------------
     // TEST 7: Device Management Endpoints (api/iot/devices.js)
