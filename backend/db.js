@@ -10,12 +10,19 @@ let cachedDb = null;
 let indexesCreated = false;
 
 function getMongoUri() {
-    return process.env.MONGODB_URI || process.env.MONGO_URL || '';
+    return (
+        process.env.MONGODB_URI ||
+        process.env.MONGO_URI ||
+        process.env.MONGODB_URL ||
+        process.env.MONGO_URL ||
+        ''
+    ).trim();
 }
 
 function getDatabaseName() {
-    if (process.env.MONGODB_DB_NAME && process.env.MONGODB_DB_NAME.trim()) {
-        return process.env.MONGODB_DB_NAME.trim();
+    const customDb = process.env.MONGODB_DB_NAME || process.env.MONGO_DB_NAME || process.env.MONGODB_DATABASE;
+    if (customDb && customDb.trim()) {
+        return customDb.trim();
     }
     const uri = getMongoUri();
     if (uri) {
@@ -30,11 +37,22 @@ function getDatabaseName() {
     return 'alpha_squad';
 }
 
+function sanitizeErrorMessage(msg) {
+    if (!msg || typeof msg !== 'string') return 'Unknown error';
+    return msg.replace(/mongodb(\+srv)?:\/\/[^@]+@/gi, 'mongodb$1://***:***@');
+}
+
+function resetDbConnection() {
+    cachedClient = null;
+    cachedDb = null;
+    indexesCreated = false;
+}
+
 /**
  * Connect to MongoDB Atlas with connection caching for serverless environments.
- * If credentials are not configured, throws an explicit configuration error.
+ * Uses bounded timeouts (3.5s by default) to prevent Vercel 504 invocation timeouts.
  */
-async function connectToDatabase() {
+async function connectToDatabase(options = {}) {
     const uri = getMongoUri();
     if (!uri) {
         throw new Error('MONGODB_URI environment variable is not configured.');
@@ -42,14 +60,21 @@ async function connectToDatabase() {
 
     if (cachedClient && cachedDb) {
         try {
-            // Verify connection is alive
-            await cachedDb.command({ ping: 1 });
+            // Verify cached connection is alive with bounded ping timeout
+            await cachedDb.command({ ping: 1 }, { maxTimeMS: 2000 });
             return { client: cachedClient, db: cachedDb };
         } catch (_) {
+            try {
+                await cachedClient.close();
+            } catch (_) {}
             cachedClient = null;
             cachedDb = null;
         }
     }
+
+    const connectTimeoutMS = options.timeoutMs || parseInt(process.env.MONGODB_CONNECT_TIMEOUT_MS, 10) || 3500;
+    const serverSelectionTimeoutMS = options.timeoutMs || parseInt(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS, 10) || 3500;
+    const socketTimeoutMS = parseInt(process.env.MONGODB_SOCKET_TIMEOUT_MS, 10) || 6000;
 
     const client = new MongoClient(uri, {
         serverApi: {
@@ -57,8 +82,9 @@ async function connectToDatabase() {
             strict: true,
             deprecationErrors: true,
         },
-        connectTimeoutMS: 8000,
-        socketTimeoutMS: 15000,
+        connectTimeoutMS,
+        serverSelectionTimeoutMS,
+        socketTimeoutMS,
         maxPoolSize: 10
     });
 
@@ -68,110 +94,108 @@ async function connectToDatabase() {
     cachedClient = client;
     cachedDb = db;
 
-    // Ensure database indexes on initial connection
-    if (!indexesCreated) {
-        try {
-            await ensureIndexes(db);
-            indexesCreated = true;
-        } catch (idxErr) {
-            console.warn('[MongoDB] Index creation warning:', idxErr.message);
-        }
+    // Ensure database indexes on initial connection if not explicitly skipped
+    if (!indexesCreated && !options.skipIndexes) {
+        ensureIndexes(db)
+            .then(() => { indexesCreated = true; })
+            .catch((idxErr) => console.warn('[MongoDB] Index creation warning:', sanitizeErrorMessage(idxErr.message)));
     }
 
     return { client: cachedClient, db: cachedDb };
 }
 
 /**
- * Creates required indexes for devices and sensor_readings collections
+ * Creates required indexes and seeds default documents in parallel
  */
 async function ensureIndexes(db) {
     const devicesCol = db.collection('devices');
     const readingsCol = db.collection('sensor_readings');
-
-    await devicesCol.createIndex({ device_id: 1 }, { unique: true });
-    await devicesCol.createIndex({ is_enabled: 1 });
-    await devicesCol.createIndex({ last_seen_at: -1 });
-
-    await readingsCol.createIndex({ device_id: 1, server_received_at: -1 });
-    await readingsCol.createIndex({ server_received_at: -1 });
-    await readingsCol.createIndex({ device_id: 1, is_simulated: 1, server_received_at: -1 });
-
-    // Seed default ALPHA-001 device if not already present
-    const crypto = require('crypto');
-    const demoHash = crypto.createHash('sha256').update('alphadev_demo_secret_token_12345').digest('hex');
-    const nowIso = new Date().toISOString();
-    await devicesCol.updateOne(
-        { device_id: 'ALPHA-001' },
-        {
-            $setOnInsert: {
-                device_id: 'ALPHA-001',
-                device_name: 'Alpha Squad Health Monitor Node 1',
-                device_type: 'ESP32',
-                token_hash: demoHash,
-                is_enabled: true,
-                created_at: nowIso,
-                updated_at: nowIso,
-                last_seen_at: null,
-                status: 'offline',
-                metadata: {}
-            }
-        },
-        { upsert: true }
-    );
-
-    // Emergency Events & Calls Collections
     const eventsCol = db.collection('emergency_events');
     const callsCol = db.collection('emergency_calls');
     const contactsCol = db.collection('patient_contacts');
     const patientEventsCol = db.collection('patient_events');
 
-    await eventsCol.createIndex({ event_id: 1 }, { unique: true });
-    await eventsCol.createIndex({ created_at: -1 });
-    await eventsCol.createIndex({ acknowledged: 1 });
-    await eventsCol.createIndex({ zone: 1 });
+    const crypto = require('crypto');
+    const demoHash = crypto.createHash('sha256').update('alphadev_demo_secret_token_12345').digest('hex');
+    const nowIso = new Date().toISOString();
 
-    await callsCol.createIndex({ event_id: 1 });
-    await callsCol.createIndex({ initiated_at: -1 });
+    const tasks = [
+        devicesCol.createIndex({ device_id: 1 }, { unique: true }),
+        devicesCol.createIndex({ is_enabled: 1 }),
+        devicesCol.createIndex({ last_seen_at: -1 }),
 
-    await contactsCol.createIndex({ contact_type: 1 }, { unique: true });
-    await patientEventsCol.createIndex({ timestamp: -1 });
+        readingsCol.createIndex({ device_id: 1, server_received_at: -1 }),
+        readingsCol.createIndex({ server_received_at: -1 }),
+        readingsCol.createIndex({ device_id: 1, is_simulated: 1, server_received_at: -1 }),
 
-    // Seed default primary and secondary emergency contacts
-    await contactsCol.updateOne(
-        { contact_type: 'primary' },
-        {
-            $setOnInsert: {
-                contact_type: 'primary',
-                name: 'Dr. Marcus Vance (Primary Caregiver)',
-                relation: 'Physician / Family',
-                phone: process.env.PRIMARY_EMERGENCY_PHONE || '+919876543210',
-                email: process.env.GMAIL_RECEIVER || 'caregiver-or-doctor-email@gmail.com',
-                call_enabled: true,
-                email_enabled: true,
-                telegram_enabled: true,
-                updated_at: nowIso
-            }
-        },
-        { upsert: true }
-    );
+        eventsCol.createIndex({ event_id: 1 }, { unique: true }),
+        eventsCol.createIndex({ created_at: -1 }),
+        eventsCol.createIndex({ acknowledged: 1 }),
+        eventsCol.createIndex({ zone: 1 }),
 
-    await contactsCol.updateOne(
-        { contact_type: 'secondary' },
-        {
-            $setOnInsert: {
-                contact_type: 'secondary',
-                name: 'Sarah Vance (Secondary Contact)',
-                relation: 'Daughter',
-                phone: process.env.SECONDARY_EMERGENCY_PHONE || '+919876543211',
-                email: 'secondary-caregiver@gmail.com',
-                call_enabled: true,
-                email_enabled: true,
-                telegram_enabled: false,
-                updated_at: nowIso
-            }
-        },
-        { upsert: true }
-    );
+        callsCol.createIndex({ event_id: 1 }),
+        callsCol.createIndex({ initiated_at: -1 }),
+
+        contactsCol.createIndex({ contact_type: 1 }, { unique: true }),
+        patientEventsCol.createIndex({ timestamp: -1 }),
+
+        devicesCol.updateOne(
+            { device_id: 'ALPHA-001' },
+            {
+                $setOnInsert: {
+                    device_id: 'ALPHA-001',
+                    device_name: 'Alpha Squad Health Monitor Node 1',
+                    device_type: 'ESP32',
+                    token_hash: demoHash,
+                    is_enabled: true,
+                    created_at: nowIso,
+                    updated_at: nowIso,
+                    last_seen_at: null,
+                    status: 'offline',
+                    metadata: {}
+                }
+            },
+            { upsert: true }
+        ),
+
+        contactsCol.updateOne(
+            { contact_type: 'primary' },
+            {
+                $setOnInsert: {
+                    contact_type: 'primary',
+                    name: 'Dr. Marcus Vance (Primary Caregiver)',
+                    relation: 'Physician / Family',
+                    phone: process.env.PRIMARY_EMERGENCY_PHONE || '+919876543210',
+                    email: process.env.GMAIL_RECEIVER || 'caregiver-or-doctor-email@gmail.com',
+                    call_enabled: true,
+                    email_enabled: true,
+                    telegram_enabled: true,
+                    updated_at: nowIso
+                }
+            },
+            { upsert: true }
+        ),
+
+        contactsCol.updateOne(
+            { contact_type: 'secondary' },
+            {
+                $setOnInsert: {
+                    contact_type: 'secondary',
+                    name: 'Sarah Vance (Secondary Contact)',
+                    relation: 'Daughter',
+                    phone: process.env.SECONDARY_EMERGENCY_PHONE || '+919876543211',
+                    email: 'secondary-caregiver@gmail.com',
+                    call_enabled: true,
+                    email_enabled: true,
+                    telegram_enabled: false,
+                    updated_at: nowIso
+                }
+            },
+            { upsert: true }
+        )
+    ];
+
+    await Promise.allSettled(tasks);
 }
 
 /**
@@ -223,9 +247,9 @@ async function getPatientEventsCollection() {
 }
 
 /**
- * Safe status inspection for health check endpoint
+ * Safe status inspection for health check endpoint with bounded timeout
  */
-async function getDbStatus() {
+async function getDbStatus(options = {}) {
     const uri = getMongoUri();
     if (!uri) {
         return {
@@ -238,35 +262,70 @@ async function getDbStatus() {
         };
     }
 
-    try {
-        const { db } = await connectToDatabase();
-        await db.command({ ping: 1 });
+    const timeoutMs = options.timeoutMs || 3500;
 
-        const devicesCount = await db.collection('devices').countDocuments();
-        const readingsCount = await db.collection('sensor_readings').countDocuments();
+    let timer = null;
+    const timeoutPromise = new Promise((resolve) => {
+        timer = setTimeout(() => {
+            resolve({
+                provider: 'mongodb-atlas',
+                connected: false,
+                database: getDatabaseName(),
+                message: `Connection timed out after ${timeoutMs}ms. Verify MongoDB Atlas Network Access (allow 0.0.0.0/0) and credentials.`,
+                devicesCount: 0,
+                readingsCount: 0
+            });
+        }, timeoutMs);
+    });
 
-        return {
-            provider: 'mongodb-atlas',
-            connected: true,
-            database: getDatabaseName(),
-            message: 'MongoDB Atlas connection active and verified.',
-            devicesCount,
-            readingsCount
-        };
-    } catch (err) {
-        return {
-            provider: 'mongodb-atlas',
-            connected: false,
-            database: getDatabaseName(),
-            message: `Connection error: ${err.message}`,
-            devicesCount: 0,
-            readingsCount: 0
-        };
-    }
+    const checkPromise = (async () => {
+        try {
+            const { db } = await connectToDatabase({ skipIndexes: true, timeoutMs });
+            // Verify database with ping command bounded to 2000ms
+            await db.command({ ping: 1 }, { maxTimeMS: 2000 });
+
+            let devicesCount = 0;
+            let readingsCount = 0;
+            try {
+                const [dCount, rCount] = await Promise.all([
+                    db.collection('devices').countDocuments({}, { maxTimeMS: 1500 }),
+                    db.collection('sensor_readings').countDocuments({}, { maxTimeMS: 1500 })
+                ]);
+                devicesCount = dCount;
+                readingsCount = rCount;
+            } catch (cntErr) {
+                console.warn('[MongoDB] Count query error:', sanitizeErrorMessage(cntErr.message));
+            }
+
+            return {
+                provider: 'mongodb-atlas',
+                connected: true,
+                database: getDatabaseName(),
+                message: 'MongoDB Atlas connection active and verified.',
+                devicesCount,
+                readingsCount
+            };
+        } catch (err) {
+            const safeMsg = sanitizeErrorMessage(err.message);
+            return {
+                provider: 'mongodb-atlas',
+                connected: false,
+                database: getDatabaseName(),
+                message: `Connection error: ${safeMsg}`,
+                devicesCount: 0,
+                readingsCount: 0
+            };
+        }
+    })();
+
+    const result = await Promise.race([checkPromise, timeoutPromise]);
+    if (timer) clearTimeout(timer);
+    return result;
 }
 
 module.exports = {
     connectToDatabase,
+    ensureIndexes,
     getDbStatus,
     getDevicesCollection,
     getReadingsCollection,
@@ -275,5 +334,7 @@ module.exports = {
     getPatientContactsCollection,
     getPatientEventsCollection,
     getMongoUri,
-    getDatabaseName
+    getDatabaseName,
+    resetDbConnection,
+    sanitizeErrorMessage
 };

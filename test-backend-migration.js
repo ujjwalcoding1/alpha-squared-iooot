@@ -184,12 +184,14 @@ async function runTests() {
     }
 
     // ------------------------------------------------------------------------
-    // TEST 1: Unconfigured MongoDB Health Check (Safe degradation)
+    // TEST 1.1: Unconfigured MongoDB Health Check (Safe degradation)
     // ------------------------------------------------------------------------
-    console.log('Test 1: Health Check without MONGODB_URI configured');
+    console.log('Test 1.1: Health Check without MONGODB_URI configured');
     const origUri = process.env.MONGODB_URI;
     delete process.env.MONGODB_URI;
     delete process.env.MONGO_URL;
+    delete process.env.MONGO_URI;
+    delete process.env.MONGODB_URL;
 
     const healthRes1 = createMockRes();
     await healthHandler({ method: 'GET', url: '/api/iot/health', headers: {} }, healthRes1);
@@ -197,6 +199,58 @@ async function runTests() {
     record('Health reports status: degraded', healthRes1.body.status === 'degraded');
     record('Health reports provider: mongodb-atlas', healthRes1.body.database.provider === 'mongodb-atlas');
     record('Health reports connected: false', healthRes1.body.database.connected === false);
+
+    // ------------------------------------------------------------------------
+    // TEST 1.2: Disconnected/Unreachable MongoDB with Credentials Sanitization
+    // ------------------------------------------------------------------------
+    console.log('\nTest 1.2: Health Check with Unreachable MongoDB & Secret Sanitization');
+    db.resetDbConnection();
+    process.env.MONGODB_URI = 'mongodb://app_user:super_secret_password_987@127.0.0.1:27999/alpha_squad';
+    const healthResDisconnected = createMockRes();
+    const startTimeDisc = Date.now();
+    await healthHandler({ method: 'GET', url: '/api/iot/health', headers: {} }, healthResDisconnected);
+    const durationDisc = Date.now() - startTimeDisc;
+
+    record('Disconnected health check returns HTTP 200 within 5 seconds', healthResDisconnected.statusCode === 200 && durationDisc < 5000);
+    record('Disconnected health reports status: degraded', healthResDisconnected.body.status === 'degraded');
+    record('Disconnected health reports connected: false', healthResDisconnected.body.database.connected === false);
+    record('Never leaks database password in response', !JSON.stringify(healthResDisconnected.body).includes('super_secret_password_987'));
+    record('Database message contains sanitized error info', typeof healthResDisconnected.body.database.message === 'string');
+    db.resetDbConnection();
+
+    // ------------------------------------------------------------------------
+    // TEST 1.3: Timeout Safeguard Scenario
+    // ------------------------------------------------------------------------
+    console.log('\nTest 1.3: Health Check Timeout Safeguard');
+    const originalGetDbStatus = db.getDbStatus;
+    // Simulate a database operation that hangs for 6 seconds
+    db.getDbStatus = () => new Promise((resolve) => {
+        setTimeout(() => {
+            resolve({
+                provider: 'mongodb-atlas',
+                connected: false,
+                database: 'alpha_squad',
+                message: 'Should have timed out earlier',
+                devicesCount: 0,
+                readingsCount: 0
+            });
+        }, 6000);
+    });
+
+    const healthResTimeout = createMockRes();
+    const startTimeTimeout = Date.now();
+    await healthHandler({ method: 'GET', url: '/api/iot/health', headers: {} }, healthResTimeout);
+    const durationTimeout = Date.now() - startTimeTimeout;
+
+    record('Timeout safeguard responds in under 4500ms', durationTimeout < 4500);
+    record('Timeout scenario returns HTTP 200 (never 504)', healthResTimeout.statusCode === 200);
+    record('Timeout reports status: degraded', healthResTimeout.body.status === 'degraded');
+    record('Timeout reports database connected: false', healthResTimeout.body.database.connected === false);
+    record('Timeout message guides caregiver on network access (0.0.0.0/0)', healthResTimeout.body.database.message.includes('0.0.0.0/0'));
+
+    // Restore getDbStatus
+    db.getDbStatus = originalGetDbStatus;
+    delete process.env.MONGODB_URI;
 
     // ------------------------------------------------------------------------
     // TEST 2: Ingestion when MongoDB is unconfigured fails safely (no silent fallback)
