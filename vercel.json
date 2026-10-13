@@ -25,6 +25,26 @@
     "api/iot/device-reading.js": {
       "memory": 256,
       "maxDuration": 15
+    },
+    "api/call/emergency-call.js": {
+      "memory": 256,
+      "maxDuration": 15
+    },
+    "api/emergency/dispatch.js": {
+      "memory": 256,
+      "maxDuration": 15
+    },
+    "api/emergency/events.js": {
+      "memory": 128,
+      "maxDuration": 10
+    },
+    "api/emergency/acknowledge.js": {
+      "memory": 128,
+      "maxDuration": 10
+    },
+    "api/patient/contacts.js": {
+      "memory": 128,
+      "maxDuration": 10
     }
   },
   "rewrites": [
@@ -63,6 +83,26 @@
     {
       "source": "/api/iot/device/:id/location-history",
       "destination": "/api/iot/device-reading?id=:id&view=location-history"
+    },
+    {
+      "source": "/api/emergency/dispatch",
+      "destination": "/api/emergency/dispatch"
+    },
+    {
+      "source": "/api/emergency/events",
+      "destination": "/api/emergency/events"
+    },
+    {
+      "source": "/api/emergency/acknowledge",
+      "destination": "/api/emergency/acknowledge"
+    },
+    {
+      "source": "/api/patient/contacts",
+      "destination": "/api/patient/contacts"
+    },
+    {
+      "source": "/api/call/emergency-call",
+      "destination": "/api/call/emergency-call"
     }
   ],
   "headers": [

@@ -98,32 +98,36 @@ function initVitalsCharts() {
 }
 
 function pushChartDataPoint(timestampLabel, heartRate, spo2, temp) {
-    if (!hrChart || !spo2Chart || !tempChart) return;
-
-    // Heart Rate
-    hrChart.data.labels.push(timestampLabel);
-    hrChart.data.datasets[0].data.push(heartRate);
-    if (hrChart.data.labels.length > MAX_CHART_POINTS) {
-        hrChart.data.labels.shift();
-        hrChart.data.datasets[0].data.shift();
+    // Body Temperature Chart
+    if (tempChart && temp !== null && !isNaN(temp)) {
+        tempChart.data.labels.push(timestampLabel);
+        tempChart.data.datasets[0].data.push(temp);
+        if (tempChart.data.labels.length > MAX_CHART_POINTS) {
+            tempChart.data.labels.shift();
+            tempChart.data.datasets[0].data.shift();
+        }
+        tempChart.update();
     }
-    hrChart.update();
 
-    // SpO2
-    spo2Chart.data.labels.push(timestampLabel);
-    spo2Chart.data.datasets[0].data.push(spo2);
-    if (spo2Chart.data.labels.length > MAX_CHART_POINTS) {
-        spo2Chart.data.labels.shift();
-        spo2Chart.data.datasets[0].data.shift();
+    // Heart Rate Chart
+    if (hrChart && heartRate !== null && !isNaN(heartRate)) {
+        hrChart.data.labels.push(timestampLabel);
+        hrChart.data.datasets[0].data.push(heartRate);
+        if (hrChart.data.labels.length > MAX_CHART_POINTS) {
+            hrChart.data.labels.shift();
+            hrChart.data.datasets[0].data.shift();
+        }
+        hrChart.update();
     }
-    spo2Chart.update();
 
-    // Temperature
-    tempChart.data.labels.push(timestampLabel);
-    tempChart.data.datasets[0].data.push(temp);
-    if (tempChart.data.labels.length > MAX_CHART_POINTS) {
-        tempChart.data.labels.shift();
-        tempChart.data.datasets[0].data.shift();
+    // SpO2 Chart (if canvas element exists)
+    if (spo2Chart && spo2 !== null && !isNaN(spo2)) {
+        spo2Chart.data.labels.push(timestampLabel);
+        spo2Chart.data.datasets[0].data.push(spo2);
+        if (spo2Chart.data.labels.length > MAX_CHART_POINTS) {
+            spo2Chart.data.labels.shift();
+            spo2Chart.data.datasets[0].data.shift();
+        }
+        spo2Chart.update();
     }
-    tempChart.update();
 }

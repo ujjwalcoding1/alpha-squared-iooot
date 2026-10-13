@@ -12,7 +12,9 @@
     "nodemailer": "^10.0.13"
   },
   "scripts": {
-    "test": "node test-backend-migration.js",
+    "test": "node test-backend-migration.js && node test-emergency-system.js",
+    "test:migration": "node test-backend-migration.js",
+    "test:emergency": "node test-emergency-system.js",
     "db:init": "node backend/database/mongo-init.js"
   },
   "repository": {

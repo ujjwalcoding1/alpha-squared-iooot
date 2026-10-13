@@ -82,11 +82,13 @@ async function triggerEmergencyEvent(emergencyType, currentVitals = {}, location
         heartRate: currentVitals.heartRate || 0,
         spo2: currentVitals.spo2 || 0,
         temperature: currentVitals.temperature || 0,
-        latitude: (finalLocation && finalLocation.latitude) ? finalLocation.latitude : DEFAULT_COORDS.lat,
-        longitude: (finalLocation && finalLocation.longitude) ? finalLocation.longitude : DEFAULT_COORDS.lng,
-        locationAvailable: finalLocation ? finalLocation.available : false,
-        locationStatusText: finalLocation ? finalLocation.statusText : "Unknown",
-        mapsUrl: finalLocation ? finalLocation.mapsUrl : null,
+        latitude: (finalLocation && typeof finalLocation.latitude === 'number') ? finalLocation.latitude : null,
+        longitude: (finalLocation && typeof finalLocation.longitude === 'number') ? finalLocation.longitude : null,
+        locationAvailable: finalLocation ? Boolean(finalLocation.available && typeof finalLocation.latitude === 'number') : false,
+        locationStatusText: finalLocation ? (finalLocation.statusText || (finalLocation.available ? "GPS Location Acquired" : "GPS Unavailable")) : "GPS Unavailable",
+        mapsUrl: (finalLocation && typeof finalLocation.latitude === 'number' && typeof finalLocation.longitude === 'number')
+            ? `https://www.google.com/maps?q=${finalLocation.latitude},${finalLocation.longitude}`
+            : null,
         status: "Active",
         acknowledged: false,
         alertStatus: alertResult.status,
@@ -124,8 +126,32 @@ async function triggerEmergencyEvent(emergencyType, currentVitals = {}, location
 /**
  * Start Fall Confirmation Countdown Modal
  * Gives 10 seconds for user to cancel false alarms.
+ * CRITICAL RULE: If confirmed fall is combined with a critical vital reading, bypass false-alarm countdown immediately.
  */
 function startFallConfirmation(currentVitals, onConfirmedCallback) {
+    // Check if combined with critical vitals
+    let shouldBypass = false;
+    if (typeof evaluateThreeZones === 'function') {
+        const evalResult = evaluateThreeZones({ ...currentVitals, fallDetected: true });
+        if (evalResult && evalResult.bypass_fall_countdown) {
+            shouldBypass = true;
+        }
+    }
+
+    if (shouldBypass) {
+        console.warn("[Emergency] Fall detected with CRITICAL vitals! Bypassing false-alarm countdown immediately.");
+        const modal = document.getElementById("fall-modal");
+        if (modal) modal.classList.remove("active");
+        if (fallCountdownTimer) {
+            clearInterval(fallCountdownTimer);
+            fallCountdownTimer = null;
+        }
+        triggerEmergencyEvent("Fall Detected (Critical Vitals)", currentVitals).then(event => {
+            if (onConfirmedCallback) onConfirmedCallback(event);
+        });
+        return;
+    }
+
     const modal = document.getElementById("fall-modal");
     const timerDisplay = document.getElementById("fall-countdown");
     if (!modal || !timerDisplay) return;

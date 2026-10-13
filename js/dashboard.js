@@ -376,44 +376,49 @@ function updateDashboardEmptyState() {
 
     if (hrPill) {
         hrPill.className = "vital-status-pill critical";
-        hrPill.textContent = "NO READINGS";
+        hrPill.textContent = "DISCONNECTED";
     }
     if (tempPill) {
         tempPill.className = "vital-status-pill critical";
-        tempPill.textContent = "NO READINGS";
+        tempPill.textContent = "DISCONNECTED";
+    }
+
+    const statusCard = document.getElementById("overall-status-card");
+    const statusText = document.getElementById("overall-status-text");
+    const statusIcon = document.getElementById("overall-status-icon");
+    const statusReasons = document.getElementById("overall-status-reasons");
+    const recText = document.getElementById("patient-recommendation-text");
+
+    if (statusCard && statusText) {
+        statusCard.className = "status-card";
+        statusText.textContent = "AWAITING TELEMETRY";
+        if (statusIcon) statusIcon.textContent = "⏳";
+        if (statusReasons) statusReasons.textContent = "Waiting for live ESP32 sensor stream or demo simulation.";
+        if (recText) recText.textContent = "Connect your physical ESP32 or switch to demo simulation stream.";
     }
 
     updatePatientLocation(null, null, false);
 }
 
 function updateDashboardUI(vitals) {
-    // 1. Update Numeric Cards safely without 0 BPM for missing sensors
+    // 1. Update Numeric Cards safely without fake readings when disconnected
     const hrEl = document.getElementById("val-heart-rate");
-    const spo2El = document.getElementById("val-spo2");
     const tempEl = document.getElementById("val-temp");
     const timeEl = document.getElementById("val-last-updated");
-
-    if (hrEl) {
-        if (typeof vitals.heartRate === "number" && vitals.heartRate > 0 && vitals.heartRateStatus === "ok") {
-            hrEl.textContent = vitals.heartRate;
-        } else {
-            hrEl.textContent = "--";
-        }
-    }
-
-    if (spo2El) {
-        if (typeof vitals.spo2 === "number" && vitals.spo2 > 0) {
-            spo2El.textContent = vitals.spo2;
-        } else {
-            spo2El.textContent = "N/A";
-        }
-    }
 
     if (tempEl) {
         if (typeof vitals.temperature === "number" && vitals.temperatureStatus === "ok") {
             tempEl.textContent = vitals.temperature.toFixed(1);
         } else {
             tempEl.textContent = "--";
+        }
+    }
+
+    if (hrEl) {
+        if (typeof vitals.heartRate === "number" && vitals.heartRate > 0 && vitals.heartRateStatus === "ok") {
+            hrEl.textContent = vitals.heartRate;
+        } else {
+            hrEl.textContent = "--";
         }
     }
 
@@ -425,64 +430,64 @@ function updateDashboardUI(vitals) {
         }
     }
 
-    // 2. Centralized Health Evaluation (only evaluate valid numeric readings)
+    // 2. Three-Zone Safety Evaluation (only evaluate valid numeric readings)
     const evalInput = {
-        heartRate: vitals.heartRateStatus === 'ok' ? vitals.heartRate : 75,
-        spo2: vitals.spo2 || 98,
-        temperature: vitals.temperatureStatus === 'ok' ? vitals.temperature : 36.6,
+        heartRate: (vitals.heartRateStatus === 'ok' && typeof vitals.heartRate === 'number') ? vitals.heartRate : null,
+        temperature: (vitals.temperatureStatus === 'ok' && typeof vitals.temperature === 'number') ? vitals.temperature : null,
         fallDetected: vitals.fallDetected,
         sos: vitals.sos
     };
-    const evaluation = evaluateHealthStatus(evalInput);
+    const evaluation = evaluateThreeZones(evalInput);
     
-    // 3. Update Overall Patient Status Card
+    // 3. Update Overall Patient Status Card & Recommendation
     const statusCard = document.getElementById("overall-status-card");
     const statusText = document.getElementById("overall-status-text");
     const statusIcon = document.getElementById("overall-status-icon");
     const statusReasons = document.getElementById("overall-status-reasons");
+    const zoneBadge = document.getElementById("zone-badge-pill");
+    const recBox = document.getElementById("patient-recommendation-box");
+    const recText = document.getElementById("patient-recommendation-text");
 
     if (statusCard && statusText) {
-        statusCard.className = `status-card ${evaluation.status}`;
-        statusText.textContent = evaluation.status;
+        statusCard.className = `status-card ${evaluation.zone === 'RED' ? 'EMERGENCY' : (evaluation.zone === 'YELLOW' ? 'WARNING' : 'SAFE')}`;
+        statusText.textContent = `${evaluation.zone} (${evaluation.status})`;
         
-        if (evaluation.status === "SAFE") {
-            if (statusIcon) statusIcon.textContent = "✅";
-            if (statusReasons) statusReasons.textContent = "All biometrics within normal health thresholds.";
-        } else if (evaluation.status === "WARNING") {
-            if (statusIcon) statusIcon.textContent = "⚠️";
-            if (statusReasons) statusReasons.textContent = evaluation.reasons.join(" | ");
-        } else if (evaluation.status === "EMERGENCY") {
-            if (statusIcon) statusIcon.textContent = "🚨";
-            if (statusReasons) statusReasons.textContent = evaluation.reasons.join(" | ");
+        if (zoneBadge) {
+            zoneBadge.className = `vital-status-pill ${evaluation.zone === 'RED' ? 'critical' : (evaluation.zone === 'YELLOW' ? 'warning' : 'normal')}`;
+            zoneBadge.textContent = `ZONE: ${evaluation.zone}`;
+        }
+
+        if (evaluation.zone === "GREEN") {
+            if (statusIcon) statusIcon.textContent = "🟢";
+            if (statusReasons) statusReasons.textContent = "All biometrics within normal health thresholds (HR: 60-100 BPM, Temp: 36.0-37.5°C).";
+            if (recBox) {
+                recBox.style.background = "rgba(16, 185, 129, 0.08)";
+                recBox.style.borderColor = "rgba(16, 185, 129, 0.25)";
+            }
+        } else if (evaluation.zone === "YELLOW") {
+            if (statusIcon) statusIcon.textContent = "🟡";
+            if (statusReasons) statusReasons.textContent = evaluation.reasons.length ? evaluation.reasons.join(" | ") : "Borderline biometrics detected.";
+            if (recBox) {
+                recBox.style.background = "rgba(245, 158, 11, 0.08)";
+                recBox.style.borderColor = "rgba(245, 158, 11, 0.35)";
+            }
+        } else if (evaluation.zone === "RED") {
+            if (statusIcon) statusIcon.textContent = "🔴";
+            if (statusReasons) statusReasons.textContent = evaluation.reasons.length ? evaluation.reasons.join(" | ") : "Critical biometrics detected.";
+            if (recBox) {
+                recBox.style.background = "rgba(239, 68, 68, 0.08)";
+                recBox.style.borderColor = "rgba(239, 68, 68, 0.35)";
+            }
+        }
+
+        if (recText && evaluation.recommendation) {
+            recText.textContent = evaluation.recommendation;
         }
     }
 
     // 4. Update Metric Status Pills
     const hrPill = document.getElementById("pill-hr-status");
-    const spo2Pill = document.getElementById("pill-spo2-status");
     const tempPill = document.getElementById("pill-temp-status");
-
-    if (hrPill) {
-        if (vitals.heartRateStatus === "ok" && typeof vitals.heartRate === "number") {
-            hrPill.className = `vital-status-pill ${evaluation.vitalStatuses.heartRate}`;
-            hrPill.textContent = evaluation.vitalStatuses.heartRate.toUpperCase();
-        } else {
-            hrPill.className = "vital-status-pill critical";
-            hrPill.textContent = vitals.heartRateStatus === "disconnected" ? "DISCONNECTED" : "UNAVAILABLE";
-        }
-    }
-
-    if (spo2Pill) {
-        if (vitals.spo2) {
-            spo2Pill.className = `vital-status-pill ${evaluation.vitalStatuses.spo2}`;
-            spo2Pill.textContent = evaluation.vitalStatuses.spo2.toUpperCase();
-        } else {
-            spo2Pill.className = "vital-status-pill";
-            spo2Pill.style.background = "rgba(148, 163, 184, 0.2)";
-            spo2Pill.style.color = "#94a3b8";
-            spo2Pill.textContent = "NOT INSTALLED";
-        }
-    }
 
     if (tempPill) {
         if (vitals.temperatureStatus === "ok" && typeof vitals.temperature === "number") {
@@ -491,6 +496,16 @@ function updateDashboardUI(vitals) {
         } else {
             tempPill.className = "vital-status-pill critical";
             tempPill.textContent = vitals.temperatureStatus === "disconnected" ? "DISCONNECTED" : "UNAVAILABLE";
+        }
+    }
+
+    if (hrPill) {
+        if (vitals.heartRateStatus === "ok" && typeof vitals.heartRate === "number") {
+            hrPill.className = `vital-status-pill ${evaluation.vitalStatuses.heartRate}`;
+            hrPill.textContent = evaluation.vitalStatuses.heartRate.toUpperCase();
+        } else {
+            hrPill.className = "vital-status-pill critical";
+            hrPill.textContent = vitals.heartRateStatus === "disconnected" ? "DISCONNECTED" : "UNAVAILABLE";
         }
     }
 
@@ -503,7 +518,7 @@ function updateDashboardUI(vitals) {
         pushChartDataPoint(
             timeLabel,
             vitals.heartRateStatus === 'ok' ? vitals.heartRate : null,
-            vitals.spo2 || null,
+            null,
             vitals.temperatureStatus === 'ok' ? vitals.temperature : null
         );
     }
@@ -580,8 +595,19 @@ function simulateDemoFall() {
 }
 
 function simulateDemoCriticalVitals() {
-    currentVitalsState.heartRate = 145;
+    currentVitalsState.heartRate = 135;
     currentVitalsState.heartRateStatus = "ok";
-    currentVitalsState.spo2 = 88;
+    currentVitalsState.temperature = 39.2;
+    currentVitalsState.temperatureStatus = "ok";
+    currentVitalsState.timestamp = Date.now();
+    updateDashboardUI(currentVitalsState);
+}
+
+function simulateDemoWarningVitals() {
+    currentVitalsState.heartRate = 108;
+    currentVitalsState.heartRateStatus = "ok";
+    currentVitalsState.temperature = 37.8;
+    currentVitalsState.temperatureStatus = "ok";
+    currentVitalsState.timestamp = Date.now();
     updateDashboardUI(currentVitalsState);
 }

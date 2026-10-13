@@ -10,7 +10,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 function applyCors(req, res) {
-    const origin = req.headers['origin'] || '';
+    const origin = (req.headers && req.headers['origin']) || '';
     const isAllowed = !origin || 
                       ALLOWED_ORIGINS.includes(origin) || 
                       origin.endsWith('.github.io') || 

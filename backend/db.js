@@ -118,6 +118,60 @@ async function ensureIndexes(db) {
         },
         { upsert: true }
     );
+
+    // Emergency Events & Calls Collections
+    const eventsCol = db.collection('emergency_events');
+    const callsCol = db.collection('emergency_calls');
+    const contactsCol = db.collection('patient_contacts');
+    const patientEventsCol = db.collection('patient_events');
+
+    await eventsCol.createIndex({ event_id: 1 }, { unique: true });
+    await eventsCol.createIndex({ created_at: -1 });
+    await eventsCol.createIndex({ acknowledged: 1 });
+    await eventsCol.createIndex({ zone: 1 });
+
+    await callsCol.createIndex({ event_id: 1 });
+    await callsCol.createIndex({ initiated_at: -1 });
+
+    await contactsCol.createIndex({ contact_type: 1 }, { unique: true });
+    await patientEventsCol.createIndex({ timestamp: -1 });
+
+    // Seed default primary and secondary emergency contacts
+    await contactsCol.updateOne(
+        { contact_type: 'primary' },
+        {
+            $setOnInsert: {
+                contact_type: 'primary',
+                name: 'Dr. Marcus Vance (Primary Caregiver)',
+                relation: 'Physician / Family',
+                phone: process.env.PRIMARY_EMERGENCY_PHONE || '+919876543210',
+                email: process.env.GMAIL_RECEIVER || 'caregiver-or-doctor-email@gmail.com',
+                call_enabled: true,
+                email_enabled: true,
+                telegram_enabled: true,
+                updated_at: nowIso
+            }
+        },
+        { upsert: true }
+    );
+
+    await contactsCol.updateOne(
+        { contact_type: 'secondary' },
+        {
+            $setOnInsert: {
+                contact_type: 'secondary',
+                name: 'Sarah Vance (Secondary Contact)',
+                relation: 'Daughter',
+                phone: process.env.SECONDARY_EMERGENCY_PHONE || '+919876543211',
+                email: 'secondary-caregiver@gmail.com',
+                call_enabled: true,
+                email_enabled: true,
+                telegram_enabled: false,
+                updated_at: nowIso
+            }
+        },
+        { upsert: true }
+    );
 }
 
 /**
@@ -134,6 +188,38 @@ async function getDevicesCollection() {
 async function getReadingsCollection() {
     const { db } = await connectToDatabase();
     return db.collection('sensor_readings');
+}
+
+/**
+ * Returns the 'emergency_events' collection
+ */
+async function getEmergencyEventsCollection() {
+    const { db } = await connectToDatabase();
+    return db.collection('emergency_events');
+}
+
+/**
+ * Returns the 'emergency_calls' collection
+ */
+async function getEmergencyCallsCollection() {
+    const { db } = await connectToDatabase();
+    return db.collection('emergency_calls');
+}
+
+/**
+ * Returns the 'patient_contacts' collection
+ */
+async function getPatientContactsCollection() {
+    const { db } = await connectToDatabase();
+    return db.collection('patient_contacts');
+}
+
+/**
+ * Returns the 'patient_events' collection (warnings and zone transitions)
+ */
+async function getPatientEventsCollection() {
+    const { db } = await connectToDatabase();
+    return db.collection('patient_events');
 }
 
 /**
@@ -184,6 +270,10 @@ module.exports = {
     getDbStatus,
     getDevicesCollection,
     getReadingsCollection,
+    getEmergencyEventsCollection,
+    getEmergencyCallsCollection,
+    getPatientContactsCollection,
+    getPatientEventsCollection,
     getMongoUri,
     getDatabaseName
 };

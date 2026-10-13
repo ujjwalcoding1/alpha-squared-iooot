@@ -16,7 +16,8 @@
 #define DEVICE_ID "ALPHA-001"
 #define DEVICE_TOKEN "alphadev_alpha001_secret_token_2026"
 
-// 4. SIM800L Emergency Contact Phone Number (E.164 format with country code)
+// 4. SIM800L Emergency Contact Phone Numbers (E.164 format with country code)
 #define EMERGENCY_PHONE_NUMBER "+919876543210"
+#define SECONDARY_PHONE_NUMBER "+919876543211"
 
 #endif // WIFI_CONFIG_H

@@ -114,17 +114,17 @@
                 <div id="device-feedback" class="feedback-msg" role="status" aria-live="polite"></div>
             </section>
 
-            <!-- SECTION B: Emergency Alerts -->
+            <!-- SECTION B: Emergency Contacts & Dispatch Configuration -->
             <section class="card" style="margin-bottom: 1.5rem;" aria-labelledby="section-alerts-title">
                 <div class="card-title" id="section-alerts-title" style="color: var(--accent-cyan); font-size: 1.05rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; margin-bottom: 1.2rem;">
-                    <span>🚨 Emergency Alerts (Gmail SMTP Backend)</span>
+                    <span>🚨 Emergency Contacts & Dispatch Workflow</span>
                 </div>
 
                 <!-- Enable/Disable Switch -->
                 <div class="switch-container">
                     <div class="switch-label">
                         <span class="switch-title">Caregiver Emergency Notifications</span>
-                        <span class="switch-subtitle">Automatically send real-time SOS & GPS alerts when critical vitals or falls are detected</span>
+                        <span class="switch-subtitle">Automatically trigger real-time Email & Voice Calls when RED zone vitals, falls, or SOS occur</span>
                     </div>
                     <label class="toggle-switch" for="cfg-alerts-enabled">
                         <input type="checkbox" id="cfg-alerts-enabled" checked>
@@ -132,81 +132,136 @@
                     </label>
                 </div>
 
-                <!-- Backend Alert API URL -->
-                <div class="form-group" style="margin-top: 0.85rem;">
-                    <label for="cfg-backend-url">
-                        <span>Backend Alert API URL</span>
-                        <span class="label-desc">(Vercel serverless alert endpoint)</span>
-                    </label>
-                    <input type="url" id="cfg-backend-url" class="form-input" placeholder="https://alpha-squared-iooot.vercel.app/api/send-email-alert" autocomplete="off">
-                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.25rem;">
-                        🔒 Gmail credentials remain secure on Vercel environment variables. This URL dispatches alerts without exposing SMTP passwords.
+                <!-- Primary Emergency Contact -->
+                <div style="font-size:0.85rem; font-weight:700; color:var(--text-primary); margin-top:1.25rem; margin-bottom:0.5rem; border-left:3px solid var(--accent-cyan); padding-left:0.5rem;">
+                    Primary Emergency Contact
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="cfg-primary-name"><span>Contact Name</span></label>
+                        <input type="text" id="cfg-primary-name" class="form-input" placeholder="e.g. Dr. Marcus Vance" value="Dr. Marcus Vance">
                     </div>
+                    <div class="form-group">
+                        <label for="cfg-primary-phone"><span>Phone Number (E.164)</span></label>
+                        <input type="tel" id="cfg-primary-phone" class="form-input" placeholder="+15552345678" value="+15552345678">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:0.5rem;">
+                    <label for="cfg-primary-email"><span>Email Address</span></label>
+                    <input type="email" id="cfg-primary-email" class="form-input" placeholder="caregiver@example.com" value="caregiver@example.com">
+                </div>
+
+                <!-- Secondary Emergency Contact -->
+                <div style="font-size:0.85rem; font-weight:700; color:var(--text-primary); margin-top:1.25rem; margin-bottom:0.5rem; border-left:3px solid var(--accent-blue); padding-left:0.5rem;">
+                    Secondary Emergency Contact (Failover)
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="cfg-secondary-name"><span>Contact Name</span></label>
+                        <input type="text" id="cfg-secondary-name" class="form-input" placeholder="e.g. Sarah Vance" value="Sarah Vance">
+                    </div>
+                    <div class="form-group">
+                        <label for="cfg-secondary-phone"><span>Phone Number (E.164)</span></label>
+                        <input type="tel" id="cfg-secondary-phone" class="form-input" placeholder="+15559876543" value="+15559876543">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:0.5rem;">
+                    <label for="cfg-secondary-email"><span>Email Address</span></label>
+                    <input type="email" id="cfg-secondary-email" class="form-input" placeholder="secondary@example.com" value="secondary@example.com">
+                </div>
+
+                <!-- Backend Alert API URL -->
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label for="cfg-backend-url">
+                        <span>Backend Dispatch API URL</span>
+                        <span class="label-desc">(Unified emergency dispatch endpoint)</span>
+                    </label>
+                    <input type="url" id="cfg-backend-url" class="form-input" placeholder="https://alpha-squared-iooot.vercel.app/api/emergency/dispatch" autocomplete="off">
+                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        🔒 Coordinates, vitals, Gmail SMTP alerts, and Twilio voice calls are handled securely server-side.
+                    </div>
+                </div>
+
+                <!-- Explicit Test Voice Call Toggle -->
+                <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.85rem; font-size:0.82rem; color:var(--text-secondary);">
+                    <input type="checkbox" id="cfg-test-voice-call" style="accent-color:var(--accent-cyan); width:16px; height:16px;">
+                    <label for="cfg-test-voice-call" style="cursor:pointer; margin:0;">
+                        Place real voice call during manual test (Twilio credentials required; leave unchecked to simulate safely)
+                    </label>
                 </div>
 
                 <!-- Test Alert Button & Feedback -->
                 <div style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center; margin-top: 1.25rem; flex-wrap: wrap;">
                     <button type="button" id="btn-test-alert" onclick="testNotificationAlert()" class="btn btn-secondary" style="font-size: 0.88rem;">
-                        🧪 Test Emergency Alert
+                        🧪 Test Emergency Alert & Workflow
                     </button>
                 </div>
                 <div id="alert-feedback" class="feedback-msg" role="status" aria-live="polite"></div>
             </section>
 
-            <!-- SECTION C: Health Alert Thresholds -->
+            <!-- SECTION C: Three-Zone Health Alert Thresholds -->
             <section class="card" style="margin-bottom: 2rem;" aria-labelledby="section-thresholds-title">
                 <div class="card-title" id="section-thresholds-title" style="color: var(--accent-cyan); font-size: 1.05rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; margin-bottom: 1.2rem;">
-                    <span>🩺 Health Alert Thresholds</span>
+                    <span>🩺 Three-Zone Health Safety Thresholds</span>
                 </div>
 
-                <div class="form-grid">
-                    <!-- Heart Rate Min -->
-                    <div class="form-group">
-                        <label for="cfg-hr-min">
-                            <span>Heart Rate Min (BPM)</span>
-                        </label>
-                        <input type="number" id="cfg-hr-min" class="form-input" min="30" max="220" step="1" placeholder="50" required>
+                <!-- Normal Zone (GREEN) -->
+                <div style="margin-bottom:1rem; padding:0.75rem; border-radius:6px; background:rgba(16, 185, 129, 0.05); border:1px solid rgba(16, 185, 129, 0.2);">
+                    <div style="font-size:0.85rem; font-weight:700; color:var(--status-safe); margin-bottom:0.5rem;">
+                        🟢 GREEN ZONE (Optimal Normal Ranges)
                     </div>
-
-                    <!-- Heart Rate Max -->
-                    <div class="form-group">
-                        <label for="cfg-hr-max">
-                            <span>Heart Rate Max (BPM)</span>
-                        </label>
-                        <input type="number" id="cfg-hr-max" class="form-input" min="40" max="240" step="1" placeholder="120" required>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="cfg-hr-normal-min"><span>Heart Rate Normal Min (BPM)</span></label>
+                            <input type="number" id="cfg-hr-normal-min" class="form-input" min="40" max="100" step="1" value="60" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-hr-normal-max"><span>Heart Rate Normal Max (BPM)</span></label>
+                            <input type="number" id="cfg-hr-normal-max" class="form-input" min="80" max="150" step="1" value="100" required>
+                        </div>
                     </div>
-                </div>
-
-                <div class="form-grid" style="margin-top: 0.5rem;">
-                    <!-- Body Temp Min -->
-                    <div class="form-group">
-                        <label for="cfg-temp-min">
-                            <span>Body Temp Min (°C)</span>
-                        </label>
-                        <input type="number" id="cfg-temp-min" class="form-input" min="30.0" max="42.0" step="0.1" placeholder="35.5" required>
-                    </div>
-
-                    <!-- Body Temp Max -->
-                    <div class="form-group">
-                        <label for="cfg-temp-max">
-                            <span>Body Temp Max (°C)</span>
-                        </label>
-                        <input type="number" id="cfg-temp-max" class="form-input" min="34.0" max="45.0" step="0.1" placeholder="38.5" required>
+                    <div class="form-grid" style="margin-top:0.5rem;">
+                        <div class="form-group">
+                            <label for="cfg-temp-normal-min"><span>Body Temp Normal Min (°C)</span></label>
+                            <input type="number" id="cfg-temp-normal-min" class="form-input" min="34.0" max="38.0" step="0.1" value="36.0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-temp-normal-max"><span>Body Temp Normal Max (°C)</span></label>
+                            <input type="number" id="cfg-temp-normal-max" class="form-input" min="36.0" max="40.0" step="0.1" value="37.5" required>
+                        </div>
                     </div>
                 </div>
 
-                <!-- SpO2 Minimum (Active MAX30102 sensor) -->
-                <div id="group-spo2" class="form-group" style="margin-top: 0.5rem; max-width: 320px;">
-                    <label for="cfg-spo2-critical">
-                        <span>Blood Oxygen Min (SpO2 %)</span>
-                        <span class="label-desc">(MAX30102 sensor)</span>
-                    </label>
-                    <input type="number" id="cfg-spo2-critical" class="form-input" min="70" max="100" step="1" placeholder="91" required>
+                <!-- Critical Zone (RED) -->
+                <div style="margin-bottom:1rem; padding:0.75rem; border-radius:6px; background:rgba(239, 68, 68, 0.05); border:1px solid rgba(239, 68, 68, 0.2);">
+                    <div style="font-size:0.85rem; font-weight:700; color:var(--status-emergency); margin-bottom:0.5rem;">
+                        🔴 RED ZONE (Immediate Emergency Limits)
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="cfg-hr-min"><span>Heart Rate Critical Low (BPM)</span></label>
+                            <input type="number" id="cfg-hr-min" class="form-input" min="30" max="80" step="1" value="50" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-hr-max"><span>Heart Rate Critical High (BPM)</span></label>
+                            <input type="number" id="cfg-hr-max" class="form-input" min="90" max="220" step="1" value="120" required>
+                        </div>
+                    </div>
+                    <div class="form-grid" style="margin-top:0.5rem;">
+                        <div class="form-group">
+                            <label for="cfg-temp-min"><span>Body Temp Critical Low (°C)</span></label>
+                            <input type="number" id="cfg-temp-min" class="form-input" min="30.0" max="36.5" step="0.1" value="35.5" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-temp-max"><span>Body Temp Critical High (°C)</span></label>
+                            <input type="number" id="cfg-temp-max" class="form-input" min="37.5" max="43.0" step="0.1" value="38.5" required>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Informational Disclaimer Note -->
                 <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-top: 1rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-                    ℹ️ <strong>Medical Disclaimer:</strong> Threshold alerts are strictly informational for automated remote caregiver notification and do not constitute a clinical medical diagnosis.
+                    ℹ️ <strong>Medical Disclaimer:</strong> Threshold alerts and recommendations are informational notifications for remote caregiver assistance and do not constitute clinical medical diagnosis or healthcare advice.
                 </div>
             </section>
 
@@ -233,7 +288,7 @@
     <script src="js/location.js"></script>
     <script>
         const DEFAULT_API_BASE = "https://alpha-squared-iooot.vercel.app";
-        const DEFAULT_ALERT_URL = "https://alpha-squared-iooot.vercel.app/api/send-email-alert";
+        const DEFAULT_ALERT_URL = "https://alpha-squared-iooot.vercel.app/api/emergency/dispatch";
         const DEMO_DEVICE_ID = "ALPHA-001";
         const DEMO_DEVICE_NAME = "Alpha Squared Health Monitor Node 1";
 
@@ -244,7 +299,7 @@
         /**
          * Load all settings from localStorage and populate inputs cleanly without selected text
          */
-        function loadSavedSettings() {
+        async function loadSavedSettings() {
             // 1. Device Configuration
             const devCfg = JSON.parse(localStorage.getItem("alpha_device_config") || "{}");
             const selectEl = document.getElementById("cfg-device-select");
@@ -262,22 +317,62 @@
             document.getElementById("cfg-device-id").value = deviceId;
             document.getElementById("cfg-device-name").value = deviceName;
             document.getElementById("cfg-api-base-url").value = apiBase;
-            // Never expose secret device tokens from storage or logs; load only if explicitly set
             document.getElementById("cfg-device-token").value = devCfg.deviceToken || "";
 
-            // 2. Alert Configuration
+            // 2. Alert Configuration & Contacts
             const alertCfg = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
             const alertsEnabled = typeof alertCfg.enabled === "boolean" ? alertCfg.enabled : true;
             document.getElementById("cfg-alerts-enabled").checked = alertsEnabled;
             document.getElementById("cfg-backend-url").value = alertCfg.backendUrl || DEFAULT_ALERT_URL;
 
+            // Load Patient Contacts from LocalStorage
+            const savedContacts = JSON.parse(localStorage.getItem("alpha_patient_contacts") || "{}");
+            if (savedContacts.primary) {
+                if (savedContacts.primary.name) document.getElementById("cfg-primary-name").value = savedContacts.primary.name;
+                if (savedContacts.primary.phone) document.getElementById("cfg-primary-phone").value = savedContacts.primary.phone;
+                if (savedContacts.primary.email) document.getElementById("cfg-primary-email").value = savedContacts.primary.email;
+            }
+            if (savedContacts.secondary) {
+                if (savedContacts.secondary.name) document.getElementById("cfg-secondary-name").value = savedContacts.secondary.name;
+                if (savedContacts.secondary.phone) document.getElementById("cfg-secondary-phone").value = savedContacts.secondary.phone;
+                if (savedContacts.secondary.email) document.getElementById("cfg-secondary-email").value = savedContacts.secondary.email;
+            }
+
+            // Also attempt to load saved contacts from backend API if available
+            try {
+                const cResp = await fetch("/api/patient/contacts");
+                if (cResp.ok) {
+                    const cData = await cResp.json();
+                    if (cData && cData.contacts) {
+                        const prim = cData.contacts.find(c => c.is_primary);
+                        const sec = cData.contacts.find(c => !c.is_primary);
+                        if (prim) {
+                            document.getElementById("cfg-primary-name").value = prim.name || document.getElementById("cfg-primary-name").value;
+                            document.getElementById("cfg-primary-phone").value = prim.phone || document.getElementById("cfg-primary-phone").value;
+                            document.getElementById("cfg-primary-email").value = prim.email || document.getElementById("cfg-primary-email").value;
+                        }
+                        if (sec) {
+                            document.getElementById("cfg-secondary-name").value = sec.name || document.getElementById("cfg-secondary-name").value;
+                            document.getElementById("cfg-secondary-phone").value = sec.phone || document.getElementById("cfg-secondary-phone").value;
+                            document.getElementById("cfg-secondary-email").value = sec.email || document.getElementById("cfg-secondary-email").value;
+                        }
+                    }
+                }
+            } catch (netErr) {
+                // Offline or local file mode; local storage populated
+            }
+
             // 3. Health Thresholds
             const thresholds = getHealthThresholds();
-            document.getElementById("cfg-hr-min").value = thresholds.hrMin || 50;
-            document.getElementById("cfg-hr-max").value = thresholds.hrMax || 120;
-            document.getElementById("cfg-temp-min").value = thresholds.tempMin || 35.5;
-            document.getElementById("cfg-temp-max").value = thresholds.tempMax || 38.5;
-            document.getElementById("cfg-spo2-critical").value = thresholds.spo2Critical || 91;
+            document.getElementById("cfg-hr-normal-min").value = thresholds.hrNormalMin || 60;
+            document.getElementById("cfg-hr-normal-max").value = thresholds.hrNormalMax || 100;
+            document.getElementById("cfg-temp-normal-min").value = thresholds.tempNormalMin || 36.0;
+            document.getElementById("cfg-temp-normal-max").value = thresholds.tempNormalMax || 37.5;
+
+            document.getElementById("cfg-hr-min").value = thresholds.hrCriticalLow || thresholds.hrMin || 50;
+            document.getElementById("cfg-hr-max").value = thresholds.hrCriticalHigh || thresholds.hrMax || 120;
+            document.getElementById("cfg-temp-min").value = thresholds.tempCriticalLow || thresholds.tempMin || 35.5;
+            document.getElementById("cfg-temp-max").value = thresholds.tempCriticalHigh || thresholds.tempMax || 38.5;
         }
 
         /**
@@ -324,43 +419,48 @@
          * Validate form threshold bounds
          */
         function validateThresholdInputs() {
-            const hrMin = parseInt(document.getElementById("cfg-hr-min").value, 10);
-            const hrMax = parseInt(document.getElementById("cfg-hr-max").value, 10);
-            const tempMin = parseFloat(document.getElementById("cfg-temp-min").value);
-            const tempMax = parseFloat(document.getElementById("cfg-temp-max").value);
-            const spo2Min = parseInt(document.getElementById("cfg-spo2-critical").value, 10);
+            const hrNormalMin = parseInt(document.getElementById("cfg-hr-normal-min").value, 10);
+            const hrNormalMax = parseInt(document.getElementById("cfg-hr-normal-max").value, 10);
+            const tempNormalMin = parseFloat(document.getElementById("cfg-temp-normal-min").value);
+            const tempNormalMax = parseFloat(document.getElementById("cfg-temp-normal-max").value);
 
-            if (isNaN(hrMin) || isNaN(hrMax) || hrMin <= 0 || hrMax <= 0) {
-                return { valid: false, error: "Heart rate thresholds must be valid positive numbers." };
-            }
-            if (hrMin >= hrMax) {
-                return { valid: false, error: "Heart Rate Min (" + hrMin + " BPM) must be less than Heart Rate Max (" + hrMax + " BPM)." };
-            }
+            const hrCritLow = parseInt(document.getElementById("cfg-hr-min").value, 10);
+            const hrCritHigh = parseInt(document.getElementById("cfg-hr-max").value, 10);
+            const tempCritLow = parseFloat(document.getElementById("cfg-temp-min").value);
+            const tempCritHigh = parseFloat(document.getElementById("cfg-temp-max").value);
 
-            if (isNaN(tempMin) || isNaN(tempMax)) {
-                return { valid: false, error: "Temperature thresholds must be valid numbers." };
+            if (isNaN(hrNormalMin) || isNaN(hrNormalMax) || hrNormalMin >= hrNormalMax) {
+                return { valid: false, error: "Normal Heart Rate Min must be less than Normal Heart Rate Max." };
             }
-            if (tempMin >= tempMax) {
-                return { valid: false, error: "Body Temp Min (" + tempMin + " °C) must be less than Body Temp Max (" + tempMax + " °C)." };
+            if (isNaN(hrCritLow) || isNaN(hrCritHigh) || hrCritLow >= hrCritHigh) {
+                return { valid: false, error: "Critical Heart Rate Low must be less than Critical Heart Rate High." };
             }
-
-            if (isNaN(spo2Min) || spo2Min < 50 || spo2Min > 100) {
-                return { valid: false, error: "SpO2 threshold must be a percentage between 50% and 100%." };
+            if (isNaN(tempNormalMin) || isNaN(tempNormalMax) || tempNormalMin >= tempNormalMax) {
+                return { valid: false, error: "Normal Body Temp Min must be less than Normal Body Temp Max." };
+            }
+            if (isNaN(tempCritLow) || isNaN(tempCritHigh) || tempCritLow >= tempCritHigh) {
+                return { valid: false, error: "Critical Body Temp Low must be less than Critical Body Temp High." };
             }
 
             return {
                 valid: true,
                 thresholds: {
-                    hrMin,
-                    hrMax,
-                    hrWarnLow: Math.max(hrMin + 5, 60),
-                    hrWarnHigh: Math.min(hrMax - 10, 100),
-                    tempMin,
-                    tempMax,
-                    tempWarnLow: 36.0,
-                    tempWarnHigh: 37.6,
-                    spo2Critical: spo2Min,
-                    spo2Warning: Math.min(spo2Min + 3, 95)
+                    hrNormalMin,
+                    hrNormalMax,
+                    tempNormalMin,
+                    tempNormalMax,
+                    hrWarnLow: hrCritLow,
+                    hrWarnHigh: hrCritHigh,
+                    tempWarnLow: tempCritLow,
+                    tempWarnHigh: tempNormalMax + 0.9,
+                    hrCriticalLow: hrCritLow,
+                    hrCriticalHigh: hrCritHigh,
+                    tempCriticalLow: tempCritLow,
+                    tempCriticalHigh: tempCritHigh,
+                    hrMin: hrCritLow,
+                    hrMax: hrCritHigh,
+                    tempMin: tempCritLow,
+                    tempMax: tempCritHigh
                 }
             };
         }
@@ -400,7 +500,7 @@
         /**
          * Save All Settings Handler (Main Form Submit)
          */
-        function saveAllSettings(event) {
+        async function saveAllSettings(event) {
             if (event) event.preventDefault();
 
             // 1. Validate Thresholds
@@ -416,7 +516,33 @@
             // 3. Save Device Config
             saveDeviceSection();
 
-            // 4. Save Alert Config
+            // 4. Save Patient Contacts
+            const contacts = {
+                primary: {
+                    name: document.getElementById("cfg-primary-name").value.trim(),
+                    phone: document.getElementById("cfg-primary-phone").value.trim(),
+                    email: document.getElementById("cfg-primary-email").value.trim()
+                },
+                secondary: {
+                    name: document.getElementById("cfg-secondary-name").value.trim(),
+                    phone: document.getElementById("cfg-secondary-phone").value.trim(),
+                    email: document.getElementById("cfg-secondary-email").value.trim()
+                }
+            };
+            localStorage.setItem("alpha_patient_contacts", JSON.stringify(contacts));
+
+            // Sync contacts to backend API / MongoDB Atlas
+            try {
+                await fetch("/api/patient/contacts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(contacts)
+                });
+            } catch (err) {
+                console.warn("[Settings] Backend contact sync warning:", err);
+            }
+
+            // 5. Save Alert Config
             let alertUrl = document.getElementById("cfg-backend-url").value.trim();
             if (!alertUrl) {
                 alertUrl = DEFAULT_ALERT_URL;
@@ -429,7 +555,7 @@
             };
             localStorage.setItem("alpha_alert_api_config", JSON.stringify(alertConfig));
 
-            showFeedback("global-save-feedback", "success", "✅ All settings saved successfully.");
+            showFeedback("global-save-feedback", "success", "✅ All settings, contacts & thresholds saved successfully.");
         }
 
         /**
@@ -462,32 +588,34 @@
         }
 
         /**
-         * Test Emergency Notification Alert via existing working endpoint
+         * Test Emergency Notification Alert via unified emergency dispatch endpoint
          */
         async function testNotificationAlert() {
             const btn = document.getElementById("btn-test-alert");
             let backendUrl = document.getElementById("cfg-backend-url").value.trim() || DEFAULT_ALERT_URL;
+            const explicitCall = document.getElementById("cfg-test-voice-call").checked;
 
             btn.disabled = true;
-            showFeedback("alert-feedback", "info", "📍 Acquiring GPS & sending test alert to backend...");
+            showFeedback("alert-feedback", "info", "📍 Acquiring GPS & preparing emergency test dispatch...");
 
             try {
                 // Fetch GPS coordinates for the test
                 const locResult = await getCurrentPatientLocation({ timeout: 5000 });
 
-                showFeedback("alert-feedback", "info", "⏳ Sending test email alert via backend...");
+                showFeedback("alert-feedback", "info", "⏳ Dispatching test emergency alert via backend...");
 
                 const response = await fetch(backendUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         source: "settings_test_button",
-                        type: "TEST EMERGENCY NOTIFICATION",
-                        patientName: document.getElementById("cfg-device-name").value || "Test Patient",
+                        type: "TEST EMERGENCY DISPATCH",
+                        patientName: document.getElementById("cfg-device-name").value || "Eleanor Vance",
                         patientId: document.getElementById("cfg-device-id").value || "ALPHA-001",
-                        vitals: { heartRate: 75, spo2: 98, temperature: 36.6 },
+                        vitals: { heartRate: 75, temperature: 36.6 },
                         location: locResult,
-                        timestamp: new Date().toLocaleString()
+                        timestamp: new Date().toLocaleString(),
+                        explicitTestCall: explicitCall
                     })
                 });
 
@@ -498,10 +626,11 @@
                     throw new Error("Invalid non-JSON response from backend. Check API URL.");
                 }
 
-                if (response.ok && data.success) {
-                    showFeedback("alert-feedback", "success", "✅ Test alert delivered successfully! Check caregiver inbox.");
+                if (response.ok && (data.success || data.dispatched)) {
+                    const callMsg = data.voice_call ? ` | Call: ${data.voice_call.status}` : "";
+                    showFeedback("alert-feedback", "success", `✅ Emergency test workflow executed successfully! (Email: dispatched${callMsg})`);
                 } else {
-                    showFeedback("alert-feedback", "error", "❌ " + (data.message || "Backend reported an error."));
+                    showFeedback("alert-feedback", "error", "❌ " + (data.message || data.error || "Backend reported an error."));
                 }
             } catch (err) {
                 showFeedback("alert-feedback", "error", "❌ Network error: " + err.message);

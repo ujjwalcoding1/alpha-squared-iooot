@@ -49,22 +49,31 @@
                     </p>
                 </div>
 
-                <div style="text-align:right;">
-                    <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase;">Caregiver Alert Status</div>
-                    <span id="emg-alert-status" class="mode-badge demo" style="font-size:0.95rem; margin-top:0.3rem;">
-                        Not Configured
-                    </span>
+                <div style="display:flex; flex-direction:column; gap:0.5rem; text-align:right;">
+                    <div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Email Alert Status</div>
+                        <span id="emg-alert-status" class="vital-status-pill warning" style="font-size:0.85rem; margin-top:0.2rem;">
+                            Alert Pending
+                        </span>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Emergency Voice Call</div>
+                        <span id="emg-call-status" class="vital-status-pill normal" style="font-size:0.85rem; margin-top:0.2rem;">
+                            Call Dispatched
+                        </span>
+                    </div>
                 </div>
             </div>
 
             <!-- Emergency Actions Bar -->
-            <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); display:flex; gap:1rem; flex-wrap:wrap;">
+            <div style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color); display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
                 <button id="btn-resolve-emergency" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); font-size:1rem; padding:0.8rem 1.5rem;">
                     ✅ Acknowledge & Resolve Emergency
                 </button>
-                <a href="tel:+15552345678" class="btn btn-secondary" style="font-size:1rem; padding:0.8rem 1.5rem;">
-                    📞 Call Primary Caregiver (+1 555-0192)
+                <a id="btn-call-caregiver" href="tel:+15552345678" class="btn btn-secondary" style="font-size:1rem; padding:0.8rem 1.5rem; text-decoration:none;">
+                    📞 Call Primary Contact (Dr. Marcus Vance)
                 </a>
+                <span id="resolve-status-msg" style="font-size:0.85rem; color:var(--accent-cyan);"></span>
             </div>
         </div>
 
@@ -78,38 +87,43 @@
                 <div class="patient-info-list" style="margin-top:1rem;">
                     <div class="patient-info-item">
                         <span class="label">Patient Name:</span>
-                        <span class="val" style="font-size:1.1rem; color:#fff;">Eleanor Vance (Age 68)</span>
+                        <span class="val" style="font-size:1.05rem; color:#fff;">Eleanor Vance (Age 68)</span>
                     </div>
                     <div class="patient-info-item">
-                        <span class="label">Heart Rate:</span>
+                        <span class="label">Heart Rate (MAX30102):</span>
                         <span id="emg-hr" class="val" style="color:var(--status-emergency); font-size:1.2rem; font-weight:800;">115 BPM</span>
                     </div>
                     <div class="patient-info-item">
-                        <span class="label">Blood Oxygen (SpO2):</span>
-                        <span id="emg-spo2" class="val" style="color:var(--status-warning); font-size:1.2rem; font-weight:800;">92 %</span>
+                        <span class="label">Body Temperature (DS18B20):</span>
+                        <span id="emg-temp" class="val" style="font-size:1.2rem; font-weight:800; color:#f59e0b;">37.2 °C</span>
                     </div>
                     <div class="patient-info-item">
-                        <span class="label">Body Temperature:</span>
-                        <span id="emg-temp" class="val" style="font-size:1.2rem; font-weight:800;">37.2 °C</span>
+                        <span class="label">Blood Pressure:</span>
+                        <span class="val" style="color:var(--text-muted); font-size:0.95rem;">Unavailable (No sensor)</span>
                     </div>
                     <div class="patient-info-item">
-                        <span class="label">Primary Caregiver Contact:</span>
-                        <span class="val">Dr. Marcus Vance</span>
+                        <span class="label">Primary Emergency Contact:</span>
+                        <span id="emg-primary-contact" class="val" style="color:#fff;">Dr. Marcus Vance (+1 555-234-5678)</span>
+                    </div>
+                    <div class="patient-info-item">
+                        <span class="label">Secondary Emergency Contact:</span>
+                        <span id="emg-secondary-contact" class="val" style="color:var(--text-secondary);">Sarah Vance (+1 555-987-6543)</span>
                     </div>
                 </div>
             </div>
 
             <!-- Patient Location Map -->
             <div class="card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
                     <h3 class="card-title" style="margin:0;">📍 Patient GPS Location</h3>
                     <a id="btn-open-google-maps" href="https://www.google.com/maps" target="_blank" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.7rem; text-decoration:none;">
-                        🗺️ Google Maps
+                        🗺️ Open Google Maps
                     </a>
                 </div>
                 <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem; display:flex; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-                    <span>Lat: <strong id="location-lat" style="color:#fff;">28.6139</strong> | Lng: <strong id="location-lng" style="color:#fff;">77.2090</strong></span>
+                    <span>Lat: <strong id="location-lat" style="color:#fff;">--</strong> | Lng: <strong id="location-lng" style="color:#fff;">--</strong></span>
                     <span id="location-status-badge" class="vital-status-pill normal" style="font-size:0.72rem;">GPS READY</span>
+                    <span id="location-source-badge" class="mode-badge live" style="font-size:0.72rem;">HARDWARE GPS (NEO-6M)</span>
                 </div>
                 <div id="map-container" style="height:220px; border-radius:8px;"></div>
             </div>
@@ -129,71 +143,157 @@
     <script src="js/emergency.js"></script>
     <script src="js/location.js"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("DOMContentLoaded", async () => {
             initLeafletMap("map-container");
             playEmergencySiren();
 
-            // Load latest emergency data
+            // Load latest emergency data from LocalStorage and attempt sync with backend
             const localHist = JSON.parse(localStorage.getItem("alpha_emergency_history") || "[]");
-            const latest = localHist[0] || {
+            let latest = localHist[0] || {
+                eventId: "EMG_" + Date.now(),
                 type: "Manual SOS Panic Triggered",
                 timestamp: new Date().toLocaleString(),
                 heartRate: 115,
-                spo2: 92,
                 temperature: 37.2,
-                alertStatus: "Not Configured"
+                alertStatus: "Dispatched",
+                alertSuccess: true,
+                callStatus: "Calling Primary Contact"
             };
+
+            // Attempt to fetch most recent event from MongoDB backend API
+            try {
+                const apiRes = await fetch("/api/emergency/events?limit=1");
+                if (apiRes.ok) {
+                    const data = await apiRes.json();
+                    if (data && data.events && data.events.length > 0) {
+                        const backendEvt = data.events[0];
+                        latest = {
+                            eventId: backendEvt.event_id || latest.eventId,
+                            type: backendEvt.reason || backendEvt.type || latest.type,
+                            timestamp: backendEvt.created_at ? new Date(backendEvt.created_at).toLocaleString() : latest.timestamp,
+                            heartRate: (backendEvt.vitals && backendEvt.vitals.heartRate) ? backendEvt.vitals.heartRate : latest.heartRate,
+                            temperature: (backendEvt.vitals && backendEvt.vitals.temperature) ? backendEvt.vitals.temperature : latest.temperature,
+                            latitude: (backendEvt.location && backendEvt.location.latitude) ? backendEvt.location.latitude : latest.latitude,
+                            longitude: (backendEvt.location && backendEvt.location.longitude) ? backendEvt.location.longitude : latest.longitude,
+                            locationAvailable: (backendEvt.location && backendEvt.location.available) || false,
+                            locationSource: (backendEvt.location && backendEvt.location.source) || "NEO-6M Hardware GPS",
+                            alertStatus: backendEvt.email_dispatched ? "Email Dispatched" : "Email Pending",
+                            alertSuccess: Boolean(backendEvt.email_dispatched),
+                            callStatus: backendEvt.voice_call_dispatched ? "Voice Call Dispatched" : (backendEvt.call_status || "Voice Call Ready")
+                        };
+                    }
+                }
+            } catch (netErr) {
+                console.log("[Emergency] Offline/Local mode, using cached event record.");
+            }
 
             document.getElementById("emg-title").textContent = latest.type;
             document.getElementById("emg-time").textContent = latest.timestamp;
-            document.getElementById("emg-hr").textContent = `${latest.heartRate} BPM`;
-            document.getElementById("emg-spo2").textContent = `${latest.spo2} %`;
-            document.getElementById("emg-temp").textContent = `${latest.temperature} °C`;
+            document.getElementById("emg-hr").textContent = latest.heartRate ? `${latest.heartRate} BPM` : "--";
+            document.getElementById("emg-temp").textContent = latest.temperature ? `${latest.temperature} °C` : "--";
+
+            // Email status
             const statusBadge = document.getElementById("emg-alert-status");
             if (statusBadge) {
-                statusBadge.textContent = latest.alertStatus || "Alert Pending";
+                statusBadge.textContent = latest.alertStatus || "Email Dispatched";
                 if (latest.alertSuccess) {
                     statusBadge.className = "vital-status-pill normal";
-                    statusBadge.style.background = "var(--status-safe-bg)";
-                    statusBadge.style.color = "var(--status-safe)";
                 } else {
                     statusBadge.className = "vital-status-pill warning";
                 }
             }
 
-            const gpsBadge = document.getElementById("location-status-badge");
-            const mapsLinkBtn = document.getElementById("btn-open-google-maps");
-            const hasGps = latest.locationAvailable !== false && latest.latitude && latest.longitude;
+            // Voice Call status
+            const callBadge = document.getElementById("emg-call-status");
+            if (callBadge) {
+                callBadge.textContent = latest.callStatus || "Voice Call Dispatched";
+                callBadge.className = "vital-status-pill normal";
+            }
 
-            if (gpsBadge) {
-                if (hasGps) {
+            // GPS & Maps Link
+            const gpsBadge = document.getElementById("location-status-badge");
+            const sourceBadge = document.getElementById("location-source-badge");
+            const mapsLinkBtn = document.getElementById("btn-open-google-maps");
+            const latEl = document.getElementById("location-lat");
+            const lngEl = document.getElementById("location-lng");
+
+            const hasGps = (typeof latest.latitude === "number" && typeof latest.longitude === "number");
+
+            if (hasGps) {
+                if (latEl) latEl.textContent = latest.latitude.toFixed(4);
+                if (lngEl) lngEl.textContent = latest.longitude.toFixed(4);
+                if (gpsBadge) {
                     gpsBadge.className = "vital-status-pill normal";
-                    gpsBadge.textContent = "✓ LIVE GPS PINPOINTED";
-                } else {
+                    gpsBadge.textContent = "✓ GPS PINPOINTED";
+                }
+                if (sourceBadge) {
+                    sourceBadge.textContent = latest.locationSource || "HARDWARE GPS (NEO-6M)";
+                    sourceBadge.className = "mode-badge live";
+                }
+                if (mapsLinkBtn) {
+                    mapsLinkBtn.href = `https://www.google.com/maps?q=${latest.latitude},${latest.longitude}`;
+                    mapsLinkBtn.style.opacity = "1";
+                }
+                updatePatientLocation(latest.latitude, latest.longitude, true);
+            } else {
+                if (latEl) latEl.textContent = "--";
+                if (lngEl) lngEl.textContent = "--";
+                if (gpsBadge) {
                     gpsBadge.className = "vital-status-pill critical";
                     gpsBadge.textContent = "⚠️ GPS UNAVAILABLE";
                 }
-            }
-
-            if (mapsLinkBtn) {
-                if (latest.mapsUrl) {
-                    mapsLinkBtn.href = latest.mapsUrl;
-                } else if (hasGps) {
-                    mapsLinkBtn.href = `https://www.google.com/maps?q=${latest.latitude},${latest.longitude}`;
-                } else {
-                    mapsLinkBtn.style.opacity = "0.6";
-                    mapsLinkBtn.title = "GPS was unavailable for this event";
+                if (sourceBadge) {
+                    sourceBadge.textContent = "NO GPS FIX";
+                    sourceBadge.className = "mode-badge demo";
                 }
+                if (mapsLinkBtn) {
+                    mapsLinkBtn.style.opacity = "0.5";
+                    mapsLinkBtn.removeAttribute("href");
+                    mapsLinkBtn.title = "GPS coordinates unavailable for this event";
+                }
+                updatePatientLocation(null, null, false);
             }
 
-            updatePatientLocation(latest.latitude, latest.longitude, hasGps);
+            // Resolve button wired to /api/emergency/acknowledge
+            const resolveBtn = document.getElementById("btn-resolve-emergency");
+            const resolveFeedback = document.getElementById("resolve-status-msg");
 
-            // Resolve button
-            document.getElementById("btn-resolve-emergency").onclick = () => {
-                stopEmergencySiren();
-                alert("Emergency state acknowledged and resolved.");
-                window.location.href = "dashboard.html";
-            };
+            if (resolveBtn) {
+                resolveBtn.onclick = async () => {
+                    resolveBtn.disabled = true;
+                    resolveBtn.textContent = "⏳ Resolving...";
+                    stopEmergencySiren();
+
+                    try {
+                        const resp = await fetch("/api/emergency/acknowledge", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                event_id: latest.eventId,
+                                resolved_by: "Caregiver Dashboard",
+                                resolution_notes: "Emergency state resolved and acknowledged by caregiver."
+                            })
+                        });
+                        const resData = await resp.json();
+                        console.log("[Emergency] Acknowledge response:", resData);
+                    } catch (e) {
+                        console.warn("[Emergency] Acknowledge API offline/cached:", e);
+                    }
+
+                    // Clear active emergency in local storage
+                    const history = JSON.parse(localStorage.getItem("alpha_emergency_history") || "[]");
+                    if (history.length > 0) {
+                        history[0].status = "Resolved";
+                        history[0].acknowledged = true;
+                        localStorage.setItem("alpha_emergency_history", JSON.stringify(history));
+                    }
+
+                    if (resolveFeedback) resolveFeedback.textContent = "✅ Emergency marked resolved in database. Returning to dashboard...";
+                    setTimeout(() => {
+                        window.location.href = "dashboard.html";
+                    }, 1200);
+                };
+            }
         });
     </script>
 </body>

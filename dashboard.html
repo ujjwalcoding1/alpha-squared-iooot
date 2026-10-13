@@ -52,49 +52,40 @@
             </div>
         </div>
 
-        <!-- Centralized Overall Health Status Card -->
+        <!-- Centralized Three-Zone Patient Safety Status Card -->
         <div id="overall-status-card" class="status-card SAFE">
-            <div class="status-label-group">
-                <span id="overall-status-icon" class="status-icon-large">✅</span>
-                <div>
-                    <div style="font-size:0.85rem; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Overall Patient Condition</div>
-                    <div id="overall-status-text" class="status-text-main">SAFE</div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                <div class="status-label-group">
+                    <span id="overall-status-icon" class="status-icon-large">🟢</span>
+                    <div>
+                        <div style="font-size:0.8rem; color:var(--text-secondary); text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">Safety Zone & Patient Condition</div>
+                        <div id="overall-status-text" class="status-text-main">GREEN (NORMAL)</div>
+                    </div>
                 </div>
+                <div id="zone-badge-pill" class="vital-status-pill normal" style="font-size:0.85rem; padding:0.35rem 0.8rem;">ZONE: GREEN</div>
             </div>
-            <div id="overall-status-reasons" style="color:var(--text-secondary); font-size:0.95rem; font-weight:500;">
-                All biometrics within normal health thresholds.
+            <div id="overall-status-reasons" style="color:var(--text-secondary); font-size:0.95rem; font-weight:500; margin-top:0.5rem;">
+                All monitored vitals are within normal health thresholds (HR: 60-100 BPM, Temp: 36.0-37.5°C).
+            </div>
+
+            <!-- Dynamic Patient Guidance & Recommendation Box -->
+            <div id="patient-recommendation-box" style="margin-top:0.85rem; padding:0.75rem 1rem; border-radius:8px; background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.25);">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    <span style="font-size:1rem;">💡</span>
+                    <strong style="color:var(--text-primary); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">Patient Recommendation:</strong>
+                </div>
+                <div id="patient-recommendation-text" style="color:var(--text-secondary); font-size:0.9rem; line-height:1.4;">
+                    All monitored vitals are within normal target ranges. Rest comfortably and stay hydrated.
+                </div>
+                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.4rem; font-style:italic;">
+                    Telemetry data is informational and does not constitute a clinical medical diagnosis.
+                </div>
             </div>
         </div>
 
-        <!-- 3 Vitals Metrics Cards -->
-        <div class="vitals-grid">
-            <!-- Heart Rate Card -->
-            <div class="card vital-card">
-                <div class="vital-card-header">
-                    <span>HEART RATE</span>
-                    <span class="vital-icon">❤️</span>
-                </div>
-                <div class="vital-value-group">
-                    <span id="val-heart-rate" class="vital-value">75</span>
-                    <span class="vital-unit">BPM</span>
-                </div>
-                <span id="pill-hr-status" class="vital-status-pill normal">NORMAL</span>
-            </div>
-
-            <!-- SpO2 Oxygen Saturation Card -->
-            <div class="card vital-card">
-                <div class="vital-card-header">
-                    <span>BLOOD OXYGEN (SpO2)</span>
-                    <span class="vital-icon">🫁</span>
-                </div>
-                <div class="vital-value-group">
-                    <span id="val-spo2" class="vital-value">98</span>
-                    <span class="vital-unit">%</span>
-                </div>
-                <span id="pill-spo2-status" class="vital-status-pill normal">NORMAL</span>
-            </div>
-
-            <!-- Body Temperature Card -->
+        <!-- ONLY TWO Primary Vital Measurement Cards (Requirement 4) -->
+        <div class="vitals-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+            <!-- 1. Body Temperature Card (°C) -->
             <div class="card vital-card">
                 <div class="vital-card-header">
                     <span>BODY TEMPERATURE</span>
@@ -106,6 +97,19 @@
                 </div>
                 <span id="pill-temp-status" class="vital-status-pill normal">NORMAL</span>
             </div>
+
+            <!-- 2. Heart Rate Card (BPM) -->
+            <div class="card vital-card">
+                <div class="vital-card-header">
+                    <span>HEART RATE</span>
+                    <span class="vital-icon">❤️</span>
+                </div>
+                <div class="vital-value-group">
+                    <span id="val-heart-rate" class="vital-value">75</span>
+                    <span class="vital-unit">BPM</span>
+                </div>
+                <span id="pill-hr-status" class="vital-status-pill normal">NORMAL</span>
+            </div>
         </div>
 
         <!-- 2-Column Main Content Section -->
@@ -114,7 +118,7 @@
             <!-- Left Column: Health Trend Charts & GPS Map -->
             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                 
-                <!-- Historic Trend Charts -->
+                <!-- Historic Trend Charts (Two Primary Vitals) -->
                 <div class="card">
                     <div class="card-title">
                         <span>Biometrics Real-Time Trend Charts</span>
@@ -123,21 +127,15 @@
                     
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
                         <div>
-                            <div style="font-size:0.85rem; color:var(--accent-cyan); font-weight:600; margin-bottom:0.4rem;">Heart Rate (BPM)</div>
-                            <div style="height: 140px; position: relative;">
-                                <canvas id="chart-heart-rate"></canvas>
-                            </div>
-                        </div>
-                        <div>
-                            <div style="font-size:0.85rem; color:var(--accent-blue); font-weight:600; margin-bottom:0.4rem;">SpO2 Oxygen (%)</div>
-                            <div style="height: 140px; position: relative;">
-                                <canvas id="chart-spo2"></canvas>
-                            </div>
-                        </div>
-                        <div>
                             <div style="font-size:0.85rem; color:var(--status-warning); font-weight:600; margin-bottom:0.4rem;">Body Temperature (°C)</div>
-                            <div style="height: 140px; position: relative;">
+                            <div style="height: 150px; position: relative;">
                                 <canvas id="chart-temperature"></canvas>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.85rem; color:var(--accent-cyan); font-weight:600; margin-bottom:0.4rem;">Heart Rate (BPM)</div>
+                            <div style="height: 150px; position: relative;">
+                                <canvas id="chart-heart-rate"></canvas>
                             </div>
                         </div>
                     </div>
@@ -242,11 +240,14 @@
                     <h4 style="font-size:0.9rem; color:var(--accent-cyan); margin-bottom:0.5rem;">⚡ Hackathon Demo Controls</h4>
                     <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.75rem;">Test system response without physical sensors:</p>
                     <div style="display:flex; flex-direction:column; gap:0.5rem;">
-                        <button onclick="simulateDemoFall()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.4rem;">
-                            ⚠️ Trigger Simulated Fall
+                        <button onclick="simulateDemoWarningVitals()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.4rem;">
+                            🟡 Trigger Yellow Warning Vitals
                         </button>
                         <button onclick="simulateDemoCriticalVitals()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.4rem;">
-                            📈 Trigger Critical Vitals Spike
+                            🔴 Trigger Red Critical Vitals Spike
+                        </button>
+                        <button onclick="simulateDemoFall()" class="btn btn-secondary" style="font-size:0.8rem; padding:0.4rem;">
+                            ⚠️ Trigger Simulated Fall
                         </button>
                     </div>
                 </div>

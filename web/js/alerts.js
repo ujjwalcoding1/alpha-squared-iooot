@@ -2,8 +2,8 @@
  * Alpha Squared - Alert Notifications & Siren Dispatch Engine
  * 
  * Secure Architecture:
- * - Credentials (Gmail, App Password, etc.) NEVER stored or handled in frontend.
- * - Emergency alerts are securely POSTed to the backend API endpoint (/api/send-email-alert).
+ * - Credentials (Gmail, Twilio, etc.) NEVER stored or handled in frontend.
+ * - Emergency alerts are securely POSTed to the backend API endpoint (/api/emergency/dispatch).
  * - Plays local browser Web Audio synthesizer siren and triggers Native Push Notifications.
  */
 
@@ -104,7 +104,7 @@ function stopEmergencySiren() {
 }
 
 /**
- * Dispatches emergency notification to Caregiver via secure backend (Gmail Email + Hooks)
+ * Dispatches emergency notification to Caregiver via secure backend (Email + Twilio Voice Call + Webhooks)
  * 
  * @param {Object} emergencyDetails {
  *   eventId: string,
@@ -113,39 +113,43 @@ function stopEmergencySiren() {
  *   patientId?: string,
  *   vitals: Object,
  *   location: Object { available, latitude, longitude, accuracy, mapsUrl, statusText },
- *   timestamp?: string
+ *   timestamp?: string,
+ *   isTest?: boolean,
+ *   explicitTestCall?: boolean
  * }
- * @returns {Promise<Object>} { success: boolean, status: string, message: string }
+ * @returns {Promise<Object>} { success: boolean, status: string, message: string, delivery?: Object }
  */
 async function dispatchCaregiverAlert(emergencyDetails) {
     console.log("[Alerts] Dispatching caregiver emergency notification...", emergencyDetails);
 
-    // 1. Fire native browser push notification (local, no credentials needed)
+    // 1. Fire native browser push notification
     const patientName = emergencyDetails.patientName || "Eleanor Vance";
-    const hr = emergencyDetails.vitals ? emergencyDetails.vitals.heartRate : '--';
-    const spo2 = emergencyDetails.vitals ? emergencyDetails.vitals.spo2 : '--';
+    const hr = emergencyDetails.vitals ? (emergencyDetails.vitals.heartRate || (emergencyDetails.vitals.heart_rate && emergencyDetails.vitals.heart_rate.value)) : '--';
+    const temp = emergencyDetails.vitals ? (emergencyDetails.vitals.temperature || (emergencyDetails.vitals.temperature && emergencyDetails.vitals.temperature.value)) : '--';
 
     triggerNativePushNotification(
         `🚨 EMERGENCY ALERT: ${emergencyDetails.type}`,
-        `Patient ${patientName} needs help! HR: ${hr} BPM, SpO2: ${spo2}%`
+        `Patient ${patientName} needs help! HR: ${hr} BPM, Temp: ${temp} °C`
     );
 
     // 2. Read backend endpoint configuration
     const alertConfig = JSON.parse(localStorage.getItem("alpha_alert_api_config") || "{}");
-    // Fall back to default deployed Vercel endpoint if not set
-    let backendUrl = (alertConfig.backendUrl || "").trim();
-    if (!backendUrl || backendUrl.startsWith("/") || backendUrl.includes("your-project")) {
-        backendUrl = "https://alpha-squared-iooot.vercel.app/api/send-email-alert";
-    } else if (backendUrl.startsWith("http") && !backendUrl.includes("/api/")) {
-        backendUrl = backendUrl.replace(/\/+$/, "") + "/api/send-email-alert";
+    let apiBase = (alertConfig.apiBaseUrl || alertConfig.backendUrl || "").trim();
+    if (!apiBase || apiBase.includes("your-project") || !apiBase.startsWith("http")) {
+        apiBase = "https://alpha-squared-iooot.vercel.app";
+    } else {
+        apiBase = apiBase.replace(/\/+$/, "").replace(/\/api\/(send-email-alert|emergency\/dispatch)$/, "");
     }
 
+    const dispatchUrl = `${apiBase}/api/emergency/dispatch`;
+    const fallbackEmailUrl = `${apiBase}/api/send-email-alert`;
+
     const payload = {
-        source: "emergency_dispatch",
+        source: emergencyDetails.isTest ? "test_alert" : "emergency_dispatch",
         eventId: emergencyDetails.eventId,
         type: emergencyDetails.type,
         patientName: patientName,
-        patientId: emergencyDetails.patientId || "ESP32_ALPHA_01",
+        patientId: emergencyDetails.patientId || "ALPHA-001",
         vitals: emergencyDetails.vitals,
         location: emergencyDetails.location || {
             available: false,
@@ -153,38 +157,54 @@ async function dispatchCaregiverAlert(emergencyDetails) {
             longitude: null,
             statusText: "Location not provided"
         },
-        timestamp: emergencyDetails.timestamp || new Date().toLocaleString()
+        timestamp: emergencyDetails.timestamp || new Date().toLocaleString(),
+        isTest: Boolean(emergencyDetails.isTest),
+        explicitTestCall: Boolean(emergencyDetails.explicitTestCall)
     };
 
     let backendResult = {
         success: false,
         status: "Pending",
-        message: ""
+        message: "",
+        delivery: null
     };
 
-    // 3. Dispatch to secure backend endpoint
+    // 3. Dispatch to unified emergency endpoint
     try {
-        console.log(`[Alerts] POSTing emergency payload to ${backendUrl}...`);
-        const response = await fetch(backendUrl, {
+        console.log(`[Alerts] POSTing to ${dispatchUrl}...`);
+        let response = await fetch(dispatchUrl, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
+
+        // Fallback to legacy email endpoint if dispatch is not found
+        if (!response.ok && response.status === 404) {
+            console.log(`[Alerts] Fallback to legacy endpoint ${fallbackEmailUrl}...`);
+            response = await fetch(fallbackEmailUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+        }
 
         const data = await response.json().catch(() => ({}));
 
         if (response.ok && data.success) {
+            const callStatus = data.delivery && data.delivery.phone_call ? data.delivery.phone_call.status : "Standby";
+            const emailStatus = data.delivery && data.delivery.email ? data.delivery.email.status : "Delivered";
+
             backendResult = {
                 success: true,
-                status: "Alert Delivered (Email to Caregivers)",
-                message: data.message || "Emergency email successfully delivered to caregiver contacts."
+                status: `Alert Delivered (Email: ${emailStatus}, Call: ${callStatus})`,
+                message: data.message || "Emergency alert successfully dispatched to caregivers.",
+                delivery: data.delivery,
+                callStatus: callStatus
             };
         } else {
             backendResult = {
                 success: false,
-                status: "Alert Failed (Server Error)",
+                status: "Alert Failed",
                 message: data.message || `Backend responded with HTTP status ${response.status}.`
             };
         }
@@ -192,12 +212,12 @@ async function dispatchCaregiverAlert(emergencyDetails) {
         console.warn("[Alerts] Network fetch to backend failed:", err.message);
         backendResult = {
             success: false,
-            status: "Alert Failed (Network Error)",
-            message: `Could not reach backend API (${err.message}). Local alarm active.`
+            status: "Alert Standby (Network Error)",
+            message: `Could not reach backend API (${err.message}). Local sirens & alarms active.`
         };
     }
 
-    // 4. Optional custom webhook dispatch (if configured in settings)
+    // 4. Optional custom webhook dispatch
     if (alertConfig.webhookUrl) {
         try {
             await fetch(alertConfig.webhookUrl, {
